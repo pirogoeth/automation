@@ -1,0 +1,20 @@
+---
+
+- name: Install sshguard
+  ansible.builtin.apt:
+    pkg:
+      - sshguard
+
+- name: Write whitelist file
+  ansible.builtin.template:
+    src: templates/sshguard/whitelist.j2
+    dest: /etc/sshguard/whitelist
+    backup: yes
+  notify:
+    - Restart sshguard
+
+- name: Enable sshguard
+  ansible.builtin.systemd:
+    name: sshguard.service
+    state: started
+    enabled: yes

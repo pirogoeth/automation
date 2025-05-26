@@ -6,6 +6,8 @@
       - postfix
     state: absent
     autoremove: true
+  when:
+    - base_skip_postfix_uninstall|default(false) is false
 
 - name: Install nullmailer
   ansible.builtin.apt:

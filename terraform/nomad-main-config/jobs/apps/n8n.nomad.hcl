@@ -89,6 +89,8 @@ job "n8n" {
         NODE_FUNCTION_ALLOW_EXTERNAL = "*"
         N8N_METRICS                  = "true"
         QUEUE_HEALTH_CHECK_ACTIVE    = "true"
+        N8N_TEMPLATES_ENABLED        = "true"
+        N8N_RUNNERS_ENABLED          = "true"
       }
 
       resources {
@@ -115,6 +117,13 @@ job "n8n" {
           "traefik.http.routers.n8n.middlewares=n8n-headers,n8n-https-redirect",
           "traefik.http.routers.n8n.service=n8n",
 
+          # "traefik.http.routers.n8n-meta.rule=Host(`n8n.${var.domain}`) && Path(`/healthz`, `/metrics`, `/healthz/readiness`)",
+          # "traefik.http.routers.n8n-meta.entrypoints=web,web-secure",
+          # "traefik.http.routers.n8n-meta.tls=true",
+          # "traefik.http.routers.n8n-meta.service=n8n",
+          # "traefik.http.routers.n8n-meta.middlewares=n8n-internal-headers,n8n-https-redirect",
+          # "traefik.http.middlewares.n8n-internal-headers.headers.Host=webhooks.${var.domain}",
+
           "traefik.http.routers.n8n-webhooks.rule=Host(`webhooks.${var.domain}`)",
           "traefik.http.routers.n8n-webhooks.entrypoints=web-secure",
           "traefik.http.routers.n8n-webhooks.tls=true",
@@ -123,6 +132,7 @@ job "n8n" {
 
           "traefik.http.services.n8n.loadbalancer.passhostheader=true",
 
+          "traefik.http.routers.n8n-meta.middlewares=n8n-headers,n8n-https-redirect",
           "traefik.http.middlewares.n8n-https-redirect.redirectscheme.scheme=https",
 
           "traefik.http.middlewares.n8n-headers.headers.STSSeconds=315360000",
@@ -140,7 +150,7 @@ job "n8n" {
           timeout  = "2s"
 
           header {
-            host = ["n8n.${var.domain}"]
+            host = ["webhooks.${var.domain}"]
           }
         }
       }

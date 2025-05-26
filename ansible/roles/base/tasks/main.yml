@@ -34,3 +34,6 @@
 
 - include_tasks: mailer.yml
   tags: [mailer, services]
+
+- include_tasks: sshguard.yml
+  tags: [sshguard, services]

@@ -1,0 +1,10 @@
+# To see more examples, please see
+# /usr/share/doc/sshguard/examples/whitelistfile.example
+
+# {{ansible_managed}}
+
+127.0.0.0/8
+# tailscale
+100.64.0.0/10
+# allowed hostnames
+{% for domain in sshguard_allow_hostnames %}{{ domain }}{% endfor %}

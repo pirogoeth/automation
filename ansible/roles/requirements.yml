@@ -1,5 +1,8 @@
 ---
 
+collections:
+- name: artis3n.tailscale
+
 roles:
 - name: geerlingguy.docker
 - name: geerlingguy.pip

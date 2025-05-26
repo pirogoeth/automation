@@ -23,3 +23,8 @@
   ansible.builtin.systemd:
     name: nullmailer.service
     state: restarted
+
+- name: Restart sshguard
+  ansible.builtin.systemd:
+    name: sshguard.service
+    state: restarted

@@ -1,5 +1,9 @@
 packer {
   required_plugins {
+    ansible = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/ansible"
+    }
     proxmox = {
       version = ">= 1.1.3"
       source  = "github.com/hashicorp/proxmox"
@@ -92,8 +96,18 @@ variable "build_time" {
   default = "{{timestamp}}"
 }
 
+variable "network_bridge" {
+  type    = string
+  default = "vmbr0"
+}
+
+variable "dns_nameserver" {
+  type    = list(string)
+  default = ["1.1.1.1", "1.0.0.1"]
+}
+
 locals {
-  template_prefix = "ubuntu-jammy-base"
+  template_prefix = "ubuntu-base"
 }
 
 source "proxmox-clone" "base" {
@@ -129,10 +143,12 @@ source "proxmox-clone" "base" {
   ballooning_minimum = 512
   memory             = 1024
 
+  nameserver = join(" ", var.dns_nameserver)
+
   network_adapters {
     model    = "virtio"
-    bridge   = "vmbr0"
-    firewall = true
+    bridge   = var.network_bridge
+    firewall = false
   }
 }
 
@@ -146,12 +162,12 @@ build {
     script          = "scripts/bootstrap-stage0.sh"
     execute_command = "env {{ .Vars }} {{ .Path }}"
     env = {
-      "ANSIBLE_VERSION" = "2.14"
+      "ANSIBLE_VERSION" = "2.18"
     }
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/playbooks/play-base.yml"
+    playbook_file = "ansible/play-base.yml"
     role_paths = [
       "ansible/roles/common",
       "ansible/roles/base",

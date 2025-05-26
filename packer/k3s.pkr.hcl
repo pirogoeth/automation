@@ -1,5 +1,9 @@
 packer {
   required_plugins {
+    ansible = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/ansible"
+    }
     proxmox = {
       version = ">= 1.1.3"
       source  = "github.com/hashicorp/proxmox"
@@ -88,7 +92,7 @@ variable "build_time" {
 }
 
 locals {
-  template_prefix = "ubuntu-jammy-k3s"
+  template_prefix = "ubuntu-k3s"
 }
 
 source "proxmox-clone" "k3s" {
@@ -144,7 +148,7 @@ build {
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/playbooks/k3s.yml"
+    playbook_file = "ansible/play-k3s.yml"
     role_paths = [
       "ansible/roles/common",
       "ansible/roles/base",
@@ -177,7 +181,7 @@ build {
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/playbooks/k3s.yml"
+    playbook_file = "ansible/play-k3s.yml"
     role_paths = [
       "ansible/roles/common",
       "ansible/roles/base",

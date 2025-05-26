@@ -127,40 +127,47 @@ scrape_configs:
     regex: "(.+):(?:\\d+)"
     replacement: "$${1}"
     target_label: "instance_address"
+
   - source_labels:
     - "__meta_nomad_tags"
     regex: ".*,prometheus.io/scrape=([^,]+),.*"
     action: "replace"
     target_label: "__scrape__"
     replacement: "true"
+
   - source_labels:
     - "__scrape__"
     action: "keep"
     regex: "true"
+
   - source_labels:
     - "__meta_nomad_tags"
     regex: ".*,prometheus.io/(path|port)=([^,]+),.*"
     action: replace
     target_label: "__metrics_$${1}__"
     replacement: "$${2}"
+
   - source_labels:
     - "__meta_nomad_tags"
     regex: ".*,prometheus.io/param/([^=]+)=([^,]+),.*"
     action: "replace"
     target_label: "__param_$${1}"
     replacement: "$${2}"
+
   - source_labels:
     - "__meta_nomad_tags"
     regex: ".*,prometheus.io/(scrape_(interval|timeout)|scheme)=([^,]+),.*"
     action: "replace"
     target_label: "__$${1}__"
     replacement: "$${3}"
+
   - source_labels:
     - "__meta_nomad_tags"
     regex: ".*,prometheus.io/label/([^=]+)=([^,]+),.*"
     action: "replace"
     target_label: "__label_$${1}__"
     replacement: "$${2}"
+
   - source_labels:
     - "__address__"
     - "__metrics_port__"
@@ -168,8 +175,10 @@ scrape_configs:
     regex: "(.+):(?:\\d+);(\\d+)"
     replacement: "$${1}:$${2}"
     target_label: "__address__"
+
   - action: "labelmap"
     regex: "__meta_(nomad_(dc|namespace|service))"
+
   - action: "labelmap"
     regex: "__label_(.*)__"
 EOH

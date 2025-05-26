@@ -2,7 +2,10 @@
 
 hypervisors:
   hosts:
-    vmh-001-usc2:
+    st6001:
       ansible_host: 107.155.67.66
       ansible_port: 22
       ansible_python_interpreter: python3
+      ansible_user: root
+      base_skip_postfix_uninstall: true
+      base_tailscale_up_skip: false

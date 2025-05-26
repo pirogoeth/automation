@@ -75,7 +75,7 @@ job "plex" {
         ]
 
         volumes = [
-          "/opt/plex-data:/config",
+          "/data/plex-data:/config",
         ]
 
         labels = {

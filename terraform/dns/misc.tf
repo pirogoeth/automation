@@ -3,6 +3,7 @@ locals {
     { sub = "godoxy", domain = "${var.service_base_domain}", to = ["10.100.0.7"] },
     { sub = "nvr", domain = "${var.service_base_domain}", to = ["10.100.10.18"] },
     { sub = "*.nvr", domain = "${var.service_base_domain}", to = ["10.100.10.18"] },
+    { sub = "mqtt", domain = "${var.service_base_domain}", to = ["10.100.0.14"] },
   ]
 }
 

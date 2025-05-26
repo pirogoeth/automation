@@ -1,5 +1,9 @@
 packer {
   required_plugins {
+    ansible = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/ansible"
+    }
     proxmox = {
       version = ">= 1.1.3"
       source  = "github.com/hashicorp/proxmox"
@@ -88,7 +92,7 @@ variable "build_time" {
 }
 
 locals {
-  template_prefix = "ubuntu-jammy-buildkite"
+  template_prefix = "ubuntu-buildkite"
 }
 
 source "proxmox-clone" "buildkite" {
@@ -141,7 +145,7 @@ build {
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/playbooks/buildkite.yml"
+    playbook_file = "ansible/play-buildkite.yml"
     role_paths = [
       "ansible/roles/common",
       "ansible/roles/buildkite",

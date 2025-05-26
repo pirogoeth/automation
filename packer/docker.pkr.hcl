@@ -1,5 +1,9 @@
 packer {
   required_plugins {
+    ansible = {
+      version = "~> 1"
+      source  = "github.com/hashicorp/ansible"
+    }
     proxmox = {
       version = ">= 1.1.3"
       source  = "github.com/hashicorp/proxmox"
@@ -82,13 +86,18 @@ variable "ssh_bastion_certificate_file" {
   default = ""
 }
 
+variable "network_bridge" {
+  type    = string
+  default = "vmbr0"
+}
+
 variable "build_time" {
   type    = string
   default = "{{timestamp}}"
 }
 
 locals {
-  template_prefix = "ubuntu-jammy-docker"
+  template_prefix = "ubuntu-docker"
 }
 
 source "proxmox-clone" "docker" {
@@ -124,8 +133,8 @@ source "proxmox-clone" "docker" {
 
   network_adapters {
     model    = "virtio"
-    bridge   = "vmbr0"
-    firewall = true
+    bridge   = var.network_bridge
+    firewall = false
   }
 
   ipconfig {
@@ -141,7 +150,7 @@ build {
   }
 
   provisioner "ansible-local" {
-    playbook_file = "ansible/playbooks/docker.yml"
+    playbook_file = "ansible/play-docker.yml"
     role_paths = [
       "ansible/roles/common",
       "ansible/roles/base",
