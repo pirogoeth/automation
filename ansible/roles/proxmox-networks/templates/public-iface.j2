@@ -1,0 +1,17 @@
+#
+# {{ ansible_managed }}
+#
+
+{% if proxmox_public_network_present %}
+auto {{ proxmox_public_network_ifname }}
+{% if proxmox_public_network_ipv4.present %}
+iface {{ proxmox_public_network_ifname }} inet static
+        post-up sysctl -w net.ipv4.ip_forward=1
+        post-up sysctl -w net.ipv4.conf.{{ proxmox_public_network_ifname }}.proxy_arp=1
+{% endif %}
+{% if proxmox_public_network_ipv6.present %}
+iface {{ proxmox_public_network_ifname }} inet6 static
+        post-up sysctl -w net.ipv6.conf.{{ proxmox_public_network_ifname }}.forwarding=1
+        post-up sysctl -w net.ipv6.conf.{{ proxmox_public_network_ifname }}.proxy_ndp=1
+{% endif %}
+{% endif %}

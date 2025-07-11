@@ -1,0 +1,25 @@
+---
+
+- name: Install ifupdown2
+  ansible.builtin.apt:
+    pkg: ifupdown2
+
+- name: Write /etc/network/interfaces
+  ansible.builtin.template:
+    src: templates/interfaces.j2
+    dest: /etc/network/interfaces
+    backup: yes
+
+- name: Write /etc/network/interfaces.d/{{ proxmox_public_interface_ifname }}
+  ansible.builtin.template:
+    src: templates/public-iface.j2
+    dest: /etc/network/interfaces.d/{{ proxmox_public_interface_ifname }}
+    backup: yes
+  when: proxmox_public_network_present
+
+- name: Write /etc/network/interfaces.d/{{ proxmox_nat_interface_ifname }}
+  ansible.builtin.template:
+    src: templates/nat-iface.j2
+    dest: /etc/network/interfaces.d/{{ proxmox_nat_interface_ifname }}
+    backup: yes
+  when: proxmox_nat_network_present

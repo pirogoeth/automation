@@ -1,23 +1,24 @@
 ---
 
 - name: Create automation directory
-  file:
+  ansible.builtin.file:
     path: /opt/automation
     state: directory
     owner: root
     group: root
     recurse: true
 
-- include_tasks: serf.yml
+- ansible.builtin.include_tasks: serf.yml
+  args:
+    apply:
+      vars:
+        _serf_state: "{{ serf_state|default('absent') }}"
   tags: [serf, services]
-
-# - include_tasks: netdata.yml
-#   tags: [netdata, services]
 
 - when:
   - raid_groups is not none
   - raid_groups | length > 0
-  include_tasks: raid.yml
+  ansible.builtin.include_tasks: raid.yml
   tags: [raid, storage]
   loop: "{{ raid_groups }}"
   args:
@@ -32,8 +33,11 @@
         fs_type: "{{ item.fs_type|default('ext4') }}"
         run_anyway: "{{ item.yes_i_know_what_im_doing|default(false) }}"
 
-- include_tasks: mailer.yml
+- ansible.builtin.include_tasks: mailer.yml
   tags: [mailer, services]
 
-- include_tasks: sshguard.yml
+- ansible.builtin.include_tasks: sshguard.yml
   tags: [sshguard, services]
+
+- ansible.builtin.include_role:
+    name: singleplatform-eng.users

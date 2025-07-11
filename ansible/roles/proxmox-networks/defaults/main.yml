@@ -1,0 +1,44 @@
+---
+
+# External interfaces to be configured on the main bridge
+proxmox_external_bridge_interfaces: []
+
+# Public network configuration
+proxmox_public_network_present: true
+proxmox_public_network_ifname: vmbr0
+proxmox_public_network_bridge_interfaces: 
+  - none
+proxmox_public_network_ipv4:
+  present: true
+  address: 107.155.67.66/29
+  gateway: 107.155.67.65
+proxmox_public_network_ipv6:
+  present: true
+  address: "2604:880:396::2/48"
+  gateway: "2604:880:396::1"
+
+# NAT network configuration
+proxmox_nat_network_present: true
+proxmox_nat_network_ifname: natbr0
+proxmox_nat_network_bridge_interfaces: 
+  - none
+proxmox_nat_network_ipv4:
+  present: true
+  address: 10.100.15.1/24
+proxmox_nat_network_ipv6:
+  present: false
+proxmox_nat_network_masquerade_subnet: '10.100.15.0/24'
+proxmox_nat_network_masquerade_egress_interface: vmbr0
+proxmox_nat_network_conntrack_fwbr: true
+proxmox_nat_network_conntrack_zone: 1
+
+# Private network configuration
+proxmox_private_network_present: true
+proxmox_private_network_ifname: intbr0
+proxmox_private_network_bridge_interfaces: 
+  - none
+proxmox_private_network_ipv4:
+  present: true
+  address: 10.100.25.1/24
+proxmox_private_network_ipv6:
+  present: false

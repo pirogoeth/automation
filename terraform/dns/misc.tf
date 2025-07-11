@@ -1,9 +1,11 @@
 locals {
   misc_a_records = [
+    { sub = "dns", domain = "${var.service_base_domain}", to = ["10.100.0.11"] },
     { sub = "godoxy", domain = "${var.service_base_domain}", to = ["10.100.0.7"] },
     { sub = "nvr", domain = "${var.service_base_domain}", to = ["10.100.10.18"] },
     { sub = "*.nvr", domain = "${var.service_base_domain}", to = ["10.100.10.18"] },
     { sub = "mqtt", domain = "${var.service_base_domain}", to = ["10.100.0.14"] },
+    { sub = "sheets", domain = var.service_base_domain, to = ["10.100.0.7"] },
   ]
 }
 

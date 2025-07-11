@@ -1,9 +1,8 @@
 ---
 
-collections:
-- name: artis3n.tailscale
-
 roles:
 - name: geerlingguy.docker
 - name: geerlingguy.pip
 - name: xanmanning.k3s
+- name: dev-sec.ssh-hardening
+- name: singleplatform-eng.users

@@ -1,0 +1,12 @@
+---
+
+- ansible.builtin.include_role:
+    name: dev-sec.ssh-hardening
+  vars:
+    network_ipv6_enable: false
+    ssh_permit_root_login: without-password
+    ssh_allow_tcp_forwarding: yes
+    ssh_allow_agent_forwarding: true
+    ssh_allow_groups: 'ssh'
+    ssh_login_grace_time: '15s'
+    ssh_max_auth_retries: 1

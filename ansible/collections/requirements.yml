@@ -7,3 +7,4 @@ collections:
 - name: cloud.terraform
 - name: community.docker
 - name: community.general
+

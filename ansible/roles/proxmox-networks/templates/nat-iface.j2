@@ -1,0 +1,26 @@
+#
+# {{ ansible_managed }}
+#
+
+{% if proxmox_nat_network_present %}
+auto {{ proxmox_nat_network_ifname }}
+{% if proxmox_nat_network_ipv4.present %}
+iface {{ proxmox_nat_network_ifname }} inet static
+        # NAT interface up
+        post-up iptables -t nat -I POSTROUTING 1 -s '{{ proxmox_nat_network_masquerade_subnet }}' -o '{{ proxmox_nat_network_masquerade_egress_interface }}' -j MASQUERADE
+{% if proxmox_nat_network_conntrack_fwbr %}
+        post-up iptables -t raw -I PREROUTING -i fwbr+ -j CT --zone '{{ proxmox_nat_network_conntrack_zone }}'
+{% endif %}
+        post-up sysctl -w net.ipv4.conf.{{ proxmox_nat_network_ifname }}.forwarding=1
+        post-up sysctl -w net.ipv4.conf.{{ proxmox_nat_network_ifname }}.proxy_arp=1
+
+        # NAT interface down
+        post-down iptables -t nat -D POSTROUTING -s '{{ proxmox_nat_network_masquerade_subnet }}' -o '{{ proxmox_nat_network_masquerade_egress_interface }}' -j MASQUERADE
+{% if proxmox_nat_network_conntrack_fwbr %}
+        post-down iptables -t raw -D PREROUTING -i fwbr+ -j CT --zone 1
+{% endif %}{% endif %}{% if proxmox_nat_network_ipv6.present %}
+iface {{ proxmox_nat_network_ifname }} inet6 static
+        post-up sysctl -w net.ipv6.conf.{{ proxmox_nat_network_ifname }}.forwarding=1
+        post-up sysctl -w net.ipv6.conf.{{ proxmox_nat_network_ifname }}.proxy_ndp=1
+{% endif %}
+{% endif %}

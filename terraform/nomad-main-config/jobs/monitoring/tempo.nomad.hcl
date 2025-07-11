@@ -82,8 +82,8 @@ job "tempo" {
 
       resources {
         cpu        = 500
-        memory     = 256
-        memory_max = 1024
+        memory     = 512
+        memory_max = 3096
       }
 
       template {
