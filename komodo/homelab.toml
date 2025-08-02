@@ -1,1 +1,199 @@
-## Add resources to get started
+[[action]]
+name = "check-container-status"
+tags = ["toy", "selective-homelab"]
+[action.config]
+file_contents = """
+const containers = await komodo.read('ListAllDockerContainers', {});
+for (let container of containers) {
+  const container_info = await komodo.read('InspectDockerContainer', {
+    container: container.id,
+    server: container.server_id,
+  });
+  console.log(container_info);
+}
+"""
+
+##
+
+[[action]]
+name = "perform-version-checks-v2"
+tags = ["selective-homelab"]
+[action.config]
+schedule = "Every other day at 2000"
+reload_deno_deps = true
+file_contents = """
+//
+// CONFIGURATION
+//
+
+const OUTPUT_WEBHOOK_URL = (await komodo.read('GetVariable', {name: "PERFORM_VERSION_CHECK_OUTPUT_WEBHOOK_URL"})).value;
+
+//
+// BUSINESS LOGIC
+//
+
+const yaml = await import("jsr:@std/yaml");
+const _ = (await import("npm:lodash")).default;
+
+const tagTransformers = {
+  clone: (x) => x,
+  stripPrefixV: (x) => x.replace("v", ""),
+  slashedFirst: (x) => x.split('/')[1],
+};
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const tagIdMap: Record<string, string> = {};
+
+interface VersionUpdateInputParams {
+  repoSlug: string;
+  tagTransformer: string;
+  varName: string;
+  stack: Types.Stack;
+};
+
+interface VersionUpdateResponse {
+  stackName: string;
+  changed: boolean;
+  message: string;
+  oldVersion?: string;
+  newVersion: string;
+  associatedStacks: string[];
+};
+
+async function updateVersion(params: VersionUpdateInputParams): Promise<VersionUpdateResponse> {
+  const varName = params.varName;
+  const repoSlug = params.repoSlug;
+  const tagTransformer = tagTransformers[params.tagTransformer];
+
+  //@ts-expect-error(2739)
+  var output: VersionUpdateResponse = {
+    stackName: params.stack.name,
+    changed: false,
+  };
+
+  if (varName === undefined) {
+    throw new Error('varName is undefined - please set it!');
+  }
+
+  if (repoSlug === undefined) {
+    throw new Error('repoSlug is undefined - please set it!')
+  }
+
+  if (!_.isFunction(tagTransformer)) {
+    throw new Error(`Tag transformer ${params.tagTransformer} in ${params.stack.name} did not resolve to a function`);
+  }
+
+  const currentReleaseResp = await fetch(`https://api.github.com/repos/${repoSlug}/releases/latest`, {
+    headers: {
+      'accept': 'application/vnd.github+json',
+      'x-github-api-version': '2022-11-28',
+    },
+  });
+
+  const currentRelease = await currentReleaseResp.json();
+  if (currentRelease.message === "Not Found") {
+    throw new Error(`Releases endpoint for repo '${repoSlug}' returned not found - is the slug correct?`);
+  }
+
+  const currentReleaseTag = tagTransformer(currentRelease.tag_name);
+  // TODO: Find first regular release instead of bailing on prerelease
+  if (currentRelease.prerelease) {
+    output.message = `Avoiding prerelease version ${currentReleaseTag}`;
+    return output;
+  }
+
+  output.newVersion = currentReleaseTag;
+
+  try {
+    let previousVersion = await komodo.read('GetVariable', { name: varName });
+    output.oldVersion = previousVersion.value;
+    if (previousVersion?.value === currentReleaseTag) {
+      output.message = `No version update needed; latest ${currentReleaseTag}`;
+      return output;
+    }
+
+    console.log(`Updating ${varName} from ${previousVersion.value} -> ${currentReleaseTag}`);
+    output.changed = true;
+    await komodo.write('UpdateVariableValue', {
+      name: varName,
+      value: currentReleaseTag,
+    });
+
+    output.message = `Found new version for ${repoSlug} - updated existing variable ${varName}`;
+  } catch (err) {
+    console.log(`Creating variable ${varName} => ${currentReleaseTag}`);
+    await komodo.write('CreateVariable', {
+      name: varName,
+      value: currentReleaseTag,
+      description: `Version field for ${repoSlug}`,
+      is_secret: false,
+    });
+
+    output.message = `Version variable for ${repoSlug} did not exist, created ${varName}`;
+  }
+
+  // TODO: Search for any stacks with services containing a matching image URL
+  output.associatedStacks = [params.stack.name];
+
+  return output;
+}
+
+async function pushWebhook(outputs: VersionUpdateResponse[]) {
+  // Post outputs to n8n for messaging
+  const urlData = new URL(OUTPUT_WEBHOOK_URL);
+  const webhookResp = await fetch(OUTPUT_WEBHOOK_URL, {
+    method: "POST",
+    body: JSON.stringify(outputs),
+    credentials: "include",
+    headers: {
+      "content-type": "application/json",
+    },
+  });
+  console.log(await webhookResp.text());
+}
+
+async function findUpdateableStacks(): Promise<VersionUpdateInputParams[]> {
+  const updateableStacks: VersionUpdateInputParams[] = [];
+
+  const stacks = await komodo.read('ListFullStacks', {});
+  for (const stackDetails of stacks) {
+    let stackSource: object;
+
+    try {
+      if (!_.isEmpty(stackDetails.info.remote_contents)) {
+        stackSource = yaml.parse(stackDetails.info.remote_contents
+          .filter((item) => ["compose.yaml", "compose.yml"].includes(item.path))[0]
+          .contents);
+      } else if (!_.isNil(stackDetails.config.file_contents)) {
+        stackSource = yaml.parse(stackDetails.config.file_contents);
+      } else {
+        console.log(`Stack ${stackDetails.name} is of unknown type?`);
+      }
+    } catch (err) {
+      console.log(`Stack read errored: ${stackDetails.name}: ${err}`);
+      console.log(stackDetails);
+      return;
+    }
+
+    if (_.has(stackSource, "x-komodo-updater")) {
+      const params = stackSource["x-komodo-updater"];
+      updateableStacks.push({
+        varName: params.varName,
+        repoSlug: params.repoSlug,
+        tagTransformer: params.tagTransformer,
+        stack: stackDetails,
+      });
+    }
+  }
+
+  return updateableStacks;
+}
+
+const updateableStacks = await findUpdateableStacks();
+const updateOutputs = [];
+for (const updaterParams of updateableStacks) {
+  updateOutputs.push(await updateVersion(updaterParams));
+}
+
+console.log(updateOutputs);
+await pushWebhook(updateOutputs);
+"""
