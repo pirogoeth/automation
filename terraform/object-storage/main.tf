@@ -119,6 +119,10 @@ resource "minio_iam_policy" "policy" {
   }
 }
 
+output "endpoint" {
+  value = var.minio_server
+}
+
 output "buckets" {
   value = keys(local._bucket_mapping)
 }

@@ -31,21 +31,16 @@ resource "nomad_job" "loki" {
   hcl2 {
     vars = {
       version              = local.loki_version
-      s3_endpoint_url      = var.minio_server
+      s3_endpoint_url      = data.terraform_remote_state.object_storage.outputs.endpoint
       s3_region            = "global"
-      s3_bucket_name       = minio_s3_bucket.bucket["loki"].bucket
-      s3_access_key_id     = minio_iam_service_account.user_sa["loki"].access_key
-      s3_secret_access_key = minio_iam_service_account.user_sa["loki"].secret_key
+      s3_bucket_name       = "loki"
+      s3_access_key_id     = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["loki"].access_key_id)
+      s3_secret_access_key = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["loki"].secret_access_key)
       s3_insecure          = true
       domain               = var.service_base_domain
       config               = file("${local.jobs}/monitoring/loki/config.yml")
     }
   }
-
-  depends_on = [
-    minio_s3_bucket.bucket["loki"],
-    minio_iam_service_account.user_sa["loki"],
-  ]
 }
 
 resource "nomad_job" "vector" {
@@ -86,19 +81,14 @@ resource "nomad_job" "tempo" {
   hcl2 {
     vars = {
       version              = local.tempo_version
-      s3_endpoint_url      = var.minio_server
+      s3_endpoint_url      = data.terraform_remote_state.object_storage.outputs.endpoint
       s3_region            = "global"
-      s3_bucket_name       = minio_s3_bucket.bucket["tempo"].bucket
-      s3_access_key_id     = minio_iam_service_account.user_sa["tempo"].access_key
-      s3_secret_access_key = minio_iam_service_account.user_sa["tempo"].secret_key
-      s3_insecure          = false
+      s3_bucket_name       = "tempo"
+      s3_access_key_id     = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["tempo"].access_key_id)
+      s3_secret_access_key = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["tempo"].secret_access_key)
+      s3_insecure          = true
       domain               = var.service_base_domain
       config               = file("${local.jobs}/monitoring/tempo/config.yml")
     }
   }
-
-  depends_on = [
-    minio_s3_bucket.bucket["tempo"],
-    minio_iam_service_account.user_sa["tempo"],
-  ]
 }
