@@ -1,0 +1,22 @@
+minio_server   = "s3.yourdomain.org"
+minio_username = "minio"
+minio_password = "password"
+minio_ssl      = true
+
+bucket_configs = [
+  {
+    user = "tempo"
+    buckets = [{
+      name = "tempo"
+      acl  = "private"
+    }]
+  },
+  {
+    user = "loki"
+    buckets = [{
+      name = "loki"
+      acl  = "private"
+    }]
+  },
+]
+
