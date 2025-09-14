@@ -1,6 +1,250 @@
+[[stack]]
+name = "elastic-01/docker-1-maas"
+tags = ["selective-homelab"]
+[stack.config]
+server = "docker-1.maas"
+project_name = "elastic-siem"
+ignore_services = ["setup"]
+file_contents = """
+x-elastic-common: &elastic-common
+  image: &elastic-image "docker.elastic.co/elasticsearch/elasticsearch-wolfi:${VERSION}"
+  volumes: &elastic-volumes
+    - ${VOL}/certs:/usr/share/elasticsearch/config/certs
+    - ${VOL}/data:/usr/share/elasticsearch/data
+    - ${VOL}/logs:/usr/share/elasticsearch/logs
+  networks: &elastic-networks
+    - backend
+
+networks:
+  backend: {}
+
+configs:
+  kibana.yml:
+    content: |
+      server.host: "0.0.0.0"
+      server.shutdownTimeout: "5s"
+      elasticsearch.hosts: [ "https://search:9200" ]
+      monitoring.ui.container.elasticsearch.enabled: true
+      xpack.encryptedSavedObjects.encryptionKey: "${STORAGE_ENCRYPTION_KEY}"
+      xpack.reporting.encryptionKey: "${REPORTING_ENCRYPTION_KEY}"
+      xpack.security.encryptionKey: "${SECURITY_ENCRYPTION_KEY}"
+  instances.yml:
+    content: |
+      instances:
+        - name: search
+          dns:
+            - search
+            - localhost
+          ip:
+            - 127.0.0.1
+
+services:
+  setup:
+    <<: *elastic-common
+    user: "0"
+    configs:
+      - source: instances.yml
+        target: /usr/share/elasticsearch/config/certs/instances.yml
+    command: >
+      bash -c '
+        if [ x${ELASTIC_PASSWORD} == x ]; then
+          echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+          exit 1;
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+          exit 1;
+        fi;
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "Creating CA";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "Creating certs";
+          bin/elasticsearch-certutil cert --silent --pem -out config/certs/certs.zip --in config/certs/instances.yml --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        echo "Setting file permissions"
+        chown -R elasticsearch:elasticsearch config/certs;
+        find . -type d -exec chmod 750 \{\} \;;
+        find . -type f -exec chmod 640 \{\} \;;
+        echo "Waiting for Elasticsearch availability";
+        until curl -s --cacert config/certs/ca/ca.crt https://search:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "Setting kibana_system password";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://search:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "All done!";
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/search/search.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  search:
+    <<: *elastic-common
+    depends_on:
+      setup:
+        condition: service_healthy
+    image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:${VERSION}
+    ports:
+      - ${ES_PORT}:9200
+    environment:
+      - node.name=search
+      - discovery.type=single-node
+      #- http.host=${ES_NETWORK_HOST}
+      #- transport.host=${ES_NETWORK_HOST}
+      - network.publish_host=${ES_NETWORK_HOST}
+      - cluster.name=${CLUSTER_NAME}
+      # - cluster.initial_master_nodes=search
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/search/search.key
+      - xpack.security.http.ssl.certificate=certs/search/search.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/search/search.key
+      - xpack.security.transport.ssl.certificate=certs/search/search.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - xpack.license.self_generated.type=${LICENSE}
+      - xpack.ml.use_auto_machine_memory_percent=true
+    mem_limit: ${MEM_LIMIT}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s --cacert config/certs/ca/ca.crt https://localhost:9200 | grep -q 'missing authentication credentials'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  kibana:
+    networks: *elastic-networks
+    depends_on:
+      search:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana-wolfi:${VERSION}
+    volumes:
+      - ${VOL}/certs:/usr/share/kibana/config/certs
+      - ${VOL}/kibana-data:/usr/share/kibana/data
+    configs:
+      - source: kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+    ports:
+      - ${KIBANA_PORT}:5601
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://search:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302 Found'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+
+  fleet-server:
+    image: docker.elastic.co/elastic-agent/elastic-agent-complete-wolfi:${VERSION}
+    depends_on:
+      search:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+    networks: *elastic-networks
+    ports:
+      - ${FLEET_PORT}:8220
+      # Fleet server internal port
+      - ${FLEET_INTERNAL_PORT}:8221
+      # Netflow/IPFIX receiver
+      - ${FLEET_NETFLOW_PORT}:2055/udp
+    hostname: fleet-server
+    environment:
+      ELASTICSEARCH_HOST: https://search:9200
+      ELASTICSEARCH_CA: /certs/ca/ca.crt
+      FLEET_SERVER_ENABLE: 1
+      FLEET_SERVER_ELASTICSEARCH_HOST: https://search:9200
+      FLEET_SERVER_SERVICE_TOKEN: ${FLEET_SERVER_SERVICE_TOKEN}
+      FLEET_SERVER_POLICY_ID: ${FLEET_SERVER_POLICY_ID}
+      # FLEET_SERVER_INSECURE_HTTP: true
+      FLEET_SERVER_ELASTICSEARCH_CA: /certs/ca/ca.crt
+      FLEET_SERVER_ES_CERT: /certs/search/search.crt
+      FLEET_SERVER_ES_CERT_KEY: /certs/search/search.key
+    volumes:
+      - ${VOL}/certs:/certs:ro
+      - ${VOL}/fleet-data:/state
+    mem_limit: ${MEM_LIMIT}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s -I https://localhost:8220",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+"""
+environment = """
+  # VARIABLE = value
+VOL=[[REMOTE_VOLUME]]/elastic-01
+VERSION=[[ELASTICSEARCH_VERSION]]
+
+# Password for the 'elastic' user (at least 6 characters)
+ELASTIC_PASSWORD=[[ELASTIC_ROOT_PASSWORD]]
+# IP of the ES node
+ES_NETWORK_HOST=10.100.10.19
+
+# Password for the 'kibana_system' user (at least 6 characters)
+KIBANA_PASSWORD=[[KIBANA_SYSTEM_PASSWORD]]
+
+# Set the cluster name
+CLUSTER_NAME=elastic-01
+
+# Set to 'basic' or 'trial' to automatically start the 30-day trial
+LICENSE=basic
+#LICENSE=trial
+
+# Port to expose Elasticsearch HTTP API to the host
+ES_PORT=9200
+#ES_PORT=127.0.0.1:9200
+
+# Port to expose Kibana to the host
+KIBANA_PORT=5601
+#KIBANA_PORT=80
+
+# Increase or decrease based on the available host memory (in bytes)
+MEM_LIMIT=1073741824
+
+# Port to expose fleet server on
+FLEET_PORT=8220
+FLEET_INTERNAL_PORT=8221
+FLEET_NETFLOW_PORT=2055
+FLEET_SERVER_POLICY_ID=1a41cb78-cc89-4aa6-8fe2-09f10e5a3a2d
+# Fleet server service token to join the cluster
+FLEET_SERVER_SERVICE_TOKEN=[[ELASTIC_FLEET_SERVER_TOKEN]]
+
+STORAGE_ENCRYPTION_KEY=890c6b53895db2f408f550ad9fe1225c
+REPORTING_ENCRYPTION_KEY=243553d82d909a065506f67952b415e0
+SECURITY_ENCRYPTION_KEY=6f7b1dc28f504277694aedbea0599172
+"""
+
+##
+
 [[action]]
 name = "check-container-status"
-tags = ["toy", "selective-homelab"]
+tags = ["selective-homelab"]
 [action.config]
 file_contents = """
 const containers = await komodo.read('ListAllDockerContainers', {});
@@ -43,11 +287,48 @@ const tagTransformers = {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const tagIdMap: Record<string, string> = {};
 
-interface VersionUpdateInputParams {
+interface InputParams {
   repoSlug: string;
   tagTransformer: string;
   varName: string;
+  health: HealthCheckConfig|null;
   stack: Types.Stack;
+};
+
+// health:
+//   checks:
+//     - type: http
+//       config:
+//         request:
+//           method: GET
+//           url: https://docs.2811rrt.net/info
+//   failure:
+//     rollback: true
+//     threshold: 5
+//     period_seconds: 30
+interface HealthCheckConfig {
+  checks: Array<HealthCheckItem>;
+  failure: HealthCheckConfigFailure;
+};
+
+interface HealthCheckItem {
+  type: string;
+  config: HealthCheckHttpConfig;
+};
+
+interface HealthCheckHttpConfig {
+  request: HealthCheckHttpRequestConfig;
+};
+
+interface HealthCheckHttpRequestConfig {
+  method: string;
+  url: string;
+}
+
+interface HealthCheckConfigFailure {
+  rollback: boolean;
+  threshold: number;
+  period_seconds: number;
 };
 
 interface VersionUpdateResponse {
@@ -57,9 +338,10 @@ interface VersionUpdateResponse {
   oldVersion?: string;
   newVersion: string;
   associatedStacks: string[];
+  healthCheckCfg: HealthCheckConfig;
 };
 
-async function updateVersion(params: VersionUpdateInputParams): Promise<VersionUpdateResponse> {
+async function updateVersion(params: InputParams): Promise<VersionUpdateResponse> {
   const varName = params.varName;
   const repoSlug = params.repoSlug;
   const tagTransformer = tagTransformers[params.tagTransformer];
@@ -68,6 +350,7 @@ async function updateVersion(params: VersionUpdateInputParams): Promise<VersionU
   var output: VersionUpdateResponse = {
     stackName: params.stack.name,
     changed: false,
+    healthCheckCfg: params.health || null,
   };
 
   if (varName === undefined) {
@@ -151,8 +434,8 @@ async function pushWebhook(outputs: VersionUpdateResponse[]) {
   console.log(await webhookResp.text());
 }
 
-async function findUpdateableStacks(): Promise<VersionUpdateInputParams[]> {
-  const updateableStacks: VersionUpdateInputParams[] = [];
+async function findUpdateableStacks(): Promise<InputParams[]> {
+  const updateableStacks: InputParams[] = [];
 
   const stacks = await komodo.read('ListFullStacks', {});
   for (const stackDetails of stacks) {
@@ -181,6 +464,7 @@ async function findUpdateableStacks(): Promise<VersionUpdateInputParams[]> {
         repoSlug: params.repoSlug,
         tagTransformer: params.tagTransformer,
         stack: stackDetails,
+        health: params.health ?? null,
       });
     }
   }
