@@ -24,6 +24,7 @@ resource "proxmox_vm_qemu" "instance" {
   target_node = var.proxmox_node
   name        = "${join("-", [var.instance_prefix, count.index])}.${var.domain_name}"
   desc        = "${var.instance_prefix} ${count.index}"
+  qemu_os     = "l26"
   os_type     = "cloud-init"
   agent       = 1
   startup     = var.startup_options
@@ -41,6 +42,7 @@ resource "proxmox_vm_qemu" "instance" {
   cores   = var.shape.cores
   sockets = var.shape.sockets
   memory  = var.shape.memory
+  balloon = coalesce(var.shape.memory_balloon, (var.shape.memory / 4))
 
   scsihw = "virtio-scsi-pci"
   disk {

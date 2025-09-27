@@ -63,6 +63,7 @@ job "plex" {
 
       config {
         image      = "ghcr.io/linuxserver/plex:${var.version}"
+        force_pull = true
         runtime    = "nvidia"
         privileged = true
 

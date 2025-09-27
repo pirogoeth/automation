@@ -29,6 +29,7 @@ variable "shape" {
     cores            = optional(number, 2),
     sockets          = optional(number, 1),
     memory           = optional(number, 4096),
+    memory_balloon   = optional(number),
     storage_type     = optional(string, "scsi"),
     storage_id       = optional(string, "local-lvm"),
     disk_size        = optional(string, "10G"),
@@ -84,6 +85,6 @@ variable "startup_options" {
 
 variable "attributes" {
   description = "Additional attributes to add to the instance's inventory"
-  type        = map(string)
+  type        = map(any)
   default     = {}
 }

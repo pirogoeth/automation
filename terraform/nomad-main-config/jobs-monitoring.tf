@@ -86,7 +86,7 @@ resource "nomad_job" "tempo" {
       s3_bucket_name       = "tempo"
       s3_access_key_id     = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["tempo"].access_key_id)
       s3_secret_access_key = sensitive(data.terraform_remote_state.object_storage.outputs.credentials["tempo"].secret_access_key)
-      s3_insecure          = true
+      s3_insecure          = false
       domain               = var.service_base_domain
       config               = file("${local.jobs}/monitoring/tempo/config.yml")
     }

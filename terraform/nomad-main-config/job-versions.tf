@@ -2,7 +2,7 @@ locals {
   # apps
   coder_version                = "2.7.0"
   miniflux_version             = "2.1.4"
-  n8n_version                  = "1.105.2"
+  n8n_version                  = "1.106.3"
   plex_version                 = "latest"
   ollama_version               = "latest"
   faster_whisper_version       = "latest-cuda"

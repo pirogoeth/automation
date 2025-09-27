@@ -11,6 +11,7 @@ terraform {
 
 provider "dns" {
   update {
+    transport     = "tcp"
     server        = var.dns_server
     key_name      = var.dns_key_name
     key_algorithm = var.dns_key_algo
