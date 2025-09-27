@@ -5,7 +5,7 @@ packer {
       source  = "github.com/hashicorp/ansible"
     }
     proxmox = {
-      version = ">= 1.1.3"
+      version = "~> 1"
       source  = "github.com/hashicorp/proxmox"
     }
   }
@@ -162,7 +162,7 @@ build {
     script          = "scripts/bootstrap-stage0.sh"
     execute_command = "env {{ .Vars }} {{ .Path }}"
     env = {
-      "ANSIBLE_VERSION" = "2.18"
+      "ANSIBLE_VERSION" = "2.19"
     }
   }
 
@@ -179,8 +179,8 @@ build {
       "-e", "packer_image_type=${build.name}",
     ]
     inventory_groups = ["packer_${build.name}"]
-    galaxy_file      = "ansible/roles/requirements.yml"
     galaxy_command   = "~${build.User}/.local/bin/ansible-galaxy"
+    galaxy_file      = "ansible/requirements-all.yml"
     group_vars       = "ansible/inventory/group_vars"
   }
 

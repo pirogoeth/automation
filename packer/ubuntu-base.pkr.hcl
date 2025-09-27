@@ -5,7 +5,7 @@ packer {
       source  = "github.com/hashicorp/ansible"
     }
     proxmox = {
-      version = ">= 1.1.3"
+      version = "~> 1"
       source  = "github.com/hashicorp/proxmox"
     }
   }
@@ -36,14 +36,14 @@ variable "proxmox_node" {
   default = env("PROXMOX_NODE")
 }
 
-variable "skip_tls_verify" {
+variable "proxmox_skip_tls_verify" {
   type    = bool
-  default = env("PROXMOX_TLS_SKIP_VERIFY")
+  default = false
 }
 
 variable "ubuntu_release" {
   type    = string
-  default = "jammy"
+  default = "noble"
 }
 
 variable "ubuntu_version_snapshot" {
@@ -77,13 +77,13 @@ variable "ssh_bastion_host" {
 }
 
 variable "ssh_bastion_port" {
-  type    = string
-  default = ""
+  type    = number
+  default = 22
 }
 
 variable "ssh_bastion_agent_auth" {
-  type    = string
-  default = ""
+  type    = bool
+  default = true
 }
 
 variable "ssh_bastion_username" {
@@ -140,11 +140,13 @@ source "proxmox-iso" "ubuntu" {
   username                 = var.proxmox_username
   password                 = var.proxmox_password
   token                    = var.proxmox_token
-  insecure_skip_tls_verify = var.skip_tls_verify
+  insecure_skip_tls_verify = var.proxmox_skip_tls_verify
 
-  iso_url          = "https://cloud-images.ubuntu.com/${var.ubuntu_release}/${var.ubuntu_version_snapshot}/${local.image_name}"
-  iso_storage_pool = var.iso_storage_pool
-  iso_checksum     = var.iso_checksum == "" ? local.remote_image_checksums[local.image_name] : var.iso_checksum
+  boot_iso {
+    iso_url          = "https://cloud-images.ubuntu.com/${var.ubuntu_release}/${var.ubuntu_version_snapshot}/${local.image_name}"
+    iso_storage_pool = var.iso_storage_pool
+    iso_checksum     = var.iso_checksum == "" ? local.remote_image_checksums[local.image_name] : var.iso_checksum
+  }
 
   node               = var.proxmox_node
   ssh_username       = "ubuntu"
