@@ -1,0 +1,79 @@
+---
+- name: Test custom map_format filter
+  hosts: localhost
+  gather_facts: false
+  vars:
+    test_ips:
+      - "10.100.10.20"
+      - "10.100.10.21"
+      - "10.100.10.22"
+    
+    test_numbers:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      
+    test_mixed:
+      - "192.168.1.1"
+      - 8080
+      - "hostname.example.com"
+  
+  tasks:
+    - name: Test map_format with IP addresses (swarm use case)
+      ansible.builtin.assert:
+        that:
+          - test_ips | map_format('{0}:2377') == ['10.100.10.20:2377', '10.100.10.21:2377', '10.100.10.22:2377']
+        success_msg: "✓ IP addresses formatted correctly with ports"
+        fail_msg: "✗ IP address formatting failed"
+
+    - name: Test map_format with numbers
+      ansible.builtin.assert:
+        that:
+          - test_numbers | map_format('item-{0}') == ['item-1', 'item-2', 'item-3', 'item-4', 'item-5']
+        success_msg: "✓ Numbers formatted correctly with prefix"
+        fail_msg: "✗ Number formatting failed"
+
+    - name: Test map_format with complex format
+      ansible.builtin.assert:
+        that:
+          - test_ips | map_format('swarm://{0}:2377') == ['swarm://10.100.10.20:2377', 'swarm://10.100.10.21:2377', 'swarm://10.100.10.22:2377']
+        success_msg: "✓ Complex format strings work correctly"
+        fail_msg: "✗ Complex format string failed"
+
+    - name: Test map_format with mixed data types
+      ansible.builtin.assert:
+        that:
+          - test_mixed | map_format('{0}') == ['192.168.1.1', '8080', 'hostname.example.com']
+        success_msg: "✓ Mixed data types handled correctly"
+        fail_msg: "✗ Mixed data type handling failed"
+
+    - name: Verify equivalence with old join/split method
+      ansible.builtin.assert:
+        that:
+          - (test_ips|join(':2377,') + ':2377')|split(',') == (test_ips | map_format('{0}:2377'))
+        success_msg: "✓ map_format produces same result as join/split method"
+        fail_msg: "✗ map_format result differs from join/split method"
+
+    - name: Test empty list handling
+      ansible.builtin.assert:
+        that:
+          - "[] | map_format('{0}:2377') == []"
+        success_msg: "✓ Empty list handled correctly"
+        fail_msg: "✗ Empty list handling failed"
+
+    - name: Test single item list
+      ansible.builtin.assert:
+        that:
+          - "['single'] | map_format('{0}:2377') == ['single:2377']"
+        success_msg: "✓ Single item list handled correctly"
+        fail_msg: "✗ Single item list handling failed"
+
+    - name: Test error handling with non-list input
+      ansible.builtin.debug:
+        msg: "Testing error handling - this should fail gracefully"
+      vars:
+        error_result: "{{ 'not_a_list' | map_format('{0}:2377') }}"
+      ignore_errors: true
+      # This should fail with a clear error message

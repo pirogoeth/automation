@@ -1,9 +1,8 @@
 ---
-
 hypervisors:
   hosts:
     st6001:
-      ansible_host: 107.155.67.66
+      ansible_host: st6001.facepalm.cloud
       ansible_port: 22
       ansible_python_interpreter: python3
       ansible_user: root
@@ -14,4 +13,58 @@ hypervisors:
       ansible_port: 22
       ansible_python_interpreter: python3
       ansible_user: ubuntu
+      bqase_tailscale_up_skip: false
+
+docker:
+  children:
+    komodo_periphery_hosts:
+      all:
+
+komodo_periphery_hosts:
+  hosts:
+    docker-workload-000-int:
+      ansible_host: 10.100.10.20
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
       base_tailscale_up_skip: false
+      periphery_install_type: direct
+    tailgw-001-int:
+      ansible_host: tailgw-001-int
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
+      base_tailscale_up_skip: false
+      periphery_install_type: direct
+    nvr-int:
+      ansible_host: 10.100.10.18
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
+      base_tailscale_up_skip: false
+      periphery_install_type: direct
+    swarmer-0.maas:
+      ansible_host: 10.100.10.20
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
+      base_tailscale_up_skip: false
+      periphery_install_type: docker
+      periphery_docker_mode: swarm
+      swarm_enabled: true
+      swarm_role: manager
+      swarm_group: default
+    docker-1.maas:
+      ansible_host: 10.100.10.19
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
+      bqase_tailscale_up_skip: false
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default
+
+swarm_default:
+  hosts:
+    swarmer-0.maas:
+    docker-1.maas:

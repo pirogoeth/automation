@@ -24,7 +24,7 @@
 
 - name: Download nvidia-container-toolkit apt list
   get_url:
-    url: https://nvidia.github.io/nvidia-docker/{{ ansible_distribution | lower }}{{ ansible_distribution_version }}/nvidia-docker.list
+    url: https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list
     dest: /etc/apt/sources.list.d/nvidia-container-toolkit.list
     mode: 0644
   notify:
@@ -42,8 +42,12 @@
 
 - name: Install nvidia-container-toolkit
   apt:
-    name: nvidia-container-toolkit
-    state: latest
+    pkg:
+      - nvidia-container-toolkit={{ nvidia_container_toolkit_version }}
+      - nvidia-container-toolkit-base={{ nvidia_container_toolkit_version }}
+      - libnvidia-container-tools={{ nvidia_container_toolkit_version }}
+      - libnvidia-container1={{ nvidia_container_toolkit_version }}
+    state: present
 
 - name: Get hash of docker config file
   stat:

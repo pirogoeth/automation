@@ -1,0 +1,66 @@
+####################################
+# 🦎 KOMODO COMPOSE - PERIPHERY 🦎 #
+####################################
+
+## This compose file will deploy:
+##   1. Komodo Periphery
+
+x-deploy: &deploy
+  mode: global
+  restart_policy:
+    condition: any
+    delay: 15s
+  rollback_config:
+    parallelism: 0
+    failure_action: pause
+    monitor: 15s
+    order: stop-first
+  update_config:
+    parallelism: 1
+    failure_action: rollback
+    monitor: 15s
+    order: stop-first
+
+services:
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${PERIPHERY_VERSION}
+    labels:
+      komodo.skip: # Prevent Komodo from stopping with StopAllContainers
+    restart: unless-stopped
+    env_file: .env
+    ## https://komo.do/docs/connect-servers#configuration
+    volumes:
+      ## Mount external docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
+      ## Allow Periphery to see processes outside of container
+      - /proc:/proc
+      ## Specify the Periphery agent root directory.
+      ## Must be the same inside and outside the container,
+      ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
+      ## Default: /etc/komodo.
+      - ${PERIPHERY_ROOT_DIRECTORY}:${PERIPHERY_ROOT_DIRECTORY}
+    ## If periphery is being run remote from the core server, ports need to be exposed
+    ports:
+      - 8120:8120
+    ## If you want to use a custom periphery config file, use command to pass it to periphery.
+    # command: periphery --config-path ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}/periphery.config.toml
+    deploy:
+      <<: *deploy
+
+  vector:
+    image: docker.io/timberio/vector:nightly-distroless-static
+    pull_policy: always
+    restart: unless-stopped
+    command:
+      - -c
+      - /config/vector.toml
+    ports:
+      - 6000:6000 # source: vector-receiver
+      - 8686:8686 # api
+    volumes:
+      - "${STACK_DIR}/vector:/config"
+      - "${STACK_DIR}/vector/data:/data"
+      - "/:/host:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    deploy:
+      <<: *deploy

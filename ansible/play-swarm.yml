@@ -1,0 +1,58 @@
+---
+- hosts: localhost
+  tags: [always]
+  tasks:
+    - name: Load terraform outputs
+      ansible.builtin.include_tasks: tasks/load-hosts.yml
+      vars:
+        infra_project: "rrtnet-infra"
+
+    - name: Add docker nodes
+      add_host:
+        name: "{{ item['name'] }}"
+        groups:
+          - docker
+        ansible_host: "{{ item['ip'] }}"
+        ansible_user: "{{ item['user'] }}"
+        ansible_python_interpreter: /usr/bin/python3
+        tf_project_path: "{{ tf_project_path }}"
+        tf_state_outputs: "{{ _terraform_outputs }}"
+        attributes: "{{ item['attributes'] }}"
+      loop: |
+        {{ 
+          _terraform_outputs['compute_instance_inventory']['value'] +
+          _terraform_outputs['gpu_instance_inventory']['value']
+        }}
+      changed_when: false
+
+- hosts: "{{ target|default('docker') }}"
+  become: yes
+  roles:
+    - role: artis3n.tailscale.machine
+      vars:
+        verbose: true
+      tags: [tailscale]
+    - role: base
+      tags: [base]
+    - role: geerlingguy.pip
+      tags: [base, pip]
+    - role: geerlingguy.docker
+      tags: [base, docker]
+    - role: docker
+      tags: [docker]
+
+# Since this is a distributed stack deployment, only deploy on a manager host
+- hosts: "{{ swarm_manager }}"
+  become: yes
+  roles:
+    - role: komodo-periphery
+      tags: [komodo-periphery]
+  vars:
+    swarm_manager: >-
+      {{
+        groups[target|default('docker')]
+        | map('extract', hostvars)
+        | selectattr('swarm_role', 'eq', 'manager')
+        | map(attribute='inventory_hostname')
+        | first
+      }}

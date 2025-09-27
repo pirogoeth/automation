@@ -1,0 +1,10 @@
+---
+compose_stack_dir: "/opt/komodo"
+compose_data_dir: "/komodo"
+
+periphery_version: latest
+periphery_state: present
+# options: "direct"|"docker"
+periphery_install_type: docker
+# options: "compose"|"swarm"
+periphery_docker_mode: compose

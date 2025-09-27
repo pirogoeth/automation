@@ -16,6 +16,9 @@
       - mailutils
     state: latest
     update_cache: true
+  register: apt_result
+  until: apt_result is success
+  retries: 30
 
 - name: Configure nullmailer remotes
   ansible.builtin.template:

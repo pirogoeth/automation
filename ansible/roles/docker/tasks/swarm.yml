@@ -1,0 +1,87 @@
+---
+
+- name: Collect swarm hosts
+  ansible.builtin.set_fact:
+    _swarm_hosts: "{{ groups['swarm_'+_swarm_group] }}"
+  vars:
+    _swarm_group: "{{ hostvars[inventory_hostname]['swarm_group']|default('default') }}"
+
+- name: Gather manager nodes for swarm_group
+  ansible.builtin.set_fact:
+    swarm_manager_nodes: >-
+      {{
+        _swarm_hosts
+        | map('extract', hostvars)
+        | selectattr('swarm_role', 'eq', 'manager')
+        | map(attribute='tailscale_node_ipv4')
+        | list
+      }}
+      
+- name: Select bootstrap manager node
+  ansible.builtin.set_fact:
+    swarm_bootstrap_manager_hostname: >-
+      {{
+        _swarm_hosts
+        | map('extract', hostvars)
+        | selectattr('swarm_role', 'eq', 'manager')
+        | map(attribute='inventory_hostname')
+        | first
+      }}
+    swarm_bootstrap_manager_ipv4: >-
+      {{
+        _swarm_hosts
+        | map('extract', hostvars)
+        | selectattr('swarm_role', 'eq', 'manager')
+        | map(attribute='tailscale_node_ipv4')
+        | first
+      }}
+
+- name: Bootstrap swarm on selected manager node
+  when: 
+    - swarm_role == "manager"
+    - inventory_hostname == swarm_bootstrap_manager_hostname
+  block:
+    - name: Ensure swarm cluster created
+      community.docker.docker_swarm:
+        state: present
+        advertise_addr: "{{ tailscale_node_ipv4 }}:4567"
+        data_path_addr: "{{ tailscale_node_ipv4 }}"
+        listen_addr: "{{ tailscale_node_ipv4 }}:2377"
+      register: swarm_bootstrap
+
+    - name: Set token facts
+      ansible.builtin.set_fact:
+        swarm_manager_token: "{{ tokens.Manager }}"
+        swarm_worker_token: "{{ tokens.Worker }}"
+      vars:
+        tokens: "{{ swarm_bootstrap.swarm_facts.JoinTokens }}"
+
+- name: Join swarm on other manager nodes
+  when:
+    - swarm_role == "manager"
+    - inventory_hostname != swarm_bootstrap_manager_hostname
+  block:
+    - name: Retrieve manager token from bootstrap manager
+      ansible.builtin.set_fact:
+        swarm_manager_token: "{{ hostvars[swarm_bootstrap_manager_hostname].swarm_manager_token }}"
+
+    - name: Ensure swarm cluster joined
+      community.docker.docker_swarm: &swarm_join_params
+        state: join
+        advertise_addr: "{{ tailscale_node_ipv4 }}:4567"
+        data_path_addr: "{{ tailscale_node_ipv4 }}"
+        listen_addr: "{{ tailscale_node_ipv4 }}:2377"
+        join_token: "{{ swarm_manager_token }}"
+        remote_addrs: "{{ [swarm_bootstrap_manager_ipv4] | map_format('{0}:2377') }}"
+        
+- name: Swarm member
+  when: swarm_role == "member"
+  block:
+    - name: Retrieve member token from bootstrap manager
+      ansible.builtin.set_fact:
+        swarm_worker_token: "{{ hostvars[swarm_bootstrap_manager_hostname].swarm_worker_token }}"
+      
+    - name: Join swarm
+      community.docker.docker_swarm:
+        <<: *swarm_join_params
+        join_token: "{{ swarm_worker_token }}"

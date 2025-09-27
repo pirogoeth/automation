@@ -1,13 +1,5 @@
 ---
 
-- name: Install packages
-  apt:
-    name: "{{ packages }}"
-    state: present
-  vars:
-    packages:
-      - golang-go
-
 - name: Get GOPATH
   command: "go env GOPATH"
   changed_when: false

@@ -1,16 +1,19 @@
 ---
-
 - name: Apt repo update
-  apt:
+  ansible.builtin.apt:
     update_cache: yes
 
 - name: Restart docker
-  service:
+  ansible.builtin.service:
     name: docker
     state: restarted
 
 - name: Restart k3s
-  service:
+  ansible.builtin.service:
     name: k3s
     state: restarted
   when: k3s_control_node is defined
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true

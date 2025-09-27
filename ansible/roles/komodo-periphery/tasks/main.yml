@@ -1,0 +1,11 @@
+---
+
+- name: Install Komodo Periphery via Docker
+  ansible.builtin.include_tasks: ./install_type_docker.yml
+  when:
+    - periphery_install_type == "docker"
+
+- name: Install Komodo Periphery directly
+  ansible.builtin.include_tasks: ./install_type_direct.yml
+  when:
+    - periphery_install_type == "direct"

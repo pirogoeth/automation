@@ -1,0 +1,23 @@
+- name: Load hosts from Terraform outputs
+  vars:
+    tf_binary: "{{ 'tofu'|which }}"
+    tf_project_path: "{{ (playbook_dir, '..', 'terraform', (infra_project|mandatory))|path_join }}"
+  block:
+  - name: Initialize Terraform backend
+    command:
+      cmd: "{{ tf_binary }} init"
+      creates: "{{ (tf_project_path, '.terraform')|path_join }}"
+      chdir: "{{ tf_project_path }}"
+    when:
+    - tf_initialize_backend|default(false)
+
+  - name: Read Terraform outputs
+    set_fact:
+      _terraform_outputs: "{{ lookup('cloud.terraform.tf_output', **args) }}"
+      tf_project_path: "{{ tf_project_path }}"
+    vars:
+      args:
+        binary_path: "{{ tf_binary }}"
+        project_path: "{{ tf_project_path }}"
+        workspace: "{{ infra_project|mandatory }}"
+

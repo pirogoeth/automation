@@ -1,5 +1,4 @@
 ---
-
 - name: Create automation directory
   ansible.builtin.file:
     path: /opt/automation
@@ -7,6 +6,30 @@
     owner: root
     group: root
     recurse: true
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ packages + (system_packages | default([])) | flatten }}"
+    state: present
+  vars:
+    packages:
+      - golang-go
+      - python3-venv
+
+- name: Create Ansible virtualenv
+  ansible.builtin.pip:
+    name: "{{ pip_packages + (ansible_pip_packages | default([])) | flatten }}"
+    virtualenv: /opt/automation/venv
+    virtualenv_site_packages: yes
+    virtualenv_command: "{{ ansible_python_interpreter }} -m venv"
+  vars:
+    pip_packages:
+      - docker
+      - jsondiff
+
+- name: Pivot into Ansible virtualenv
+  set_fact:
+    ansible_python_interpreter: "/opt/automation/venv/bin/python"
 
 - ansible.builtin.include_tasks: serf.yml
   args:
@@ -16,8 +39,8 @@
   tags: [serf, services]
 
 - when:
-  - raid_groups is not none
-  - raid_groups | length > 0
+    - raid_groups is not none
+    - raid_groups | length > 0
   ansible.builtin.include_tasks: raid.yml
   tags: [raid, storage]
   loop: "{{ raid_groups }}"
@@ -41,3 +64,13 @@
 
 - ansible.builtin.include_role:
     name: singleplatform-eng.users
+
+- name: Manage system mounts
+  ansible.posix.mount:
+    path: "{{ item.dest }}"
+    src: "{{ item.src }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.options|default('') }}"
+    boot: yes
+    state: "{{ item.state|default(packer_image_type is defined|ternary('present', 'mounted')) }}"
+  loop: "{{ system_disk_mounts|default([]) }}"

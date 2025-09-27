@@ -1,0 +1,13 @@
+---
+
+system_disk_mounts:
+  - src: 10.100.0.6:/volume1/downloads
+    dest: /mnt/downloads
+    fstype: nfs
+    options: defaults,noatime
+    state: mounted
+  - src: 10.100.0.6:/volume1/plex-data
+    dest: /mnt/plex-data
+    fstype: nfs
+    options: defaults,noatime
+    state: mounted

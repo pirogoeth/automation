@@ -1,0 +1,37 @@
+---
+- name: Template env file
+  ansible.builtin.template:
+    src: "files/env.j2"
+    dest: "/etc/default/komodo"
+    owner: "root"
+    group: "root"
+    mode: "0640"
+
+- name: Ensure Komodo opt dir
+  ansible.builtin.file:
+    path: "/opt/komodo"
+    owner: "root"
+    group: "root"
+    mode: "0750"
+    state: "{{ periphery_state == 'present' | ternary('directory', 'absent') }}"
+
+- when:
+    - periphery_state == "present"
+  block:
+    - name: Push Komodo setup script
+      ansible.builtin.copy:
+        src: files/setup-periphery.py
+        dest: "/opt/komodo/setup-periphery.py"
+        owner: "root"
+        group: "root"
+        mode: "0750"
+
+    - name: Run setup script
+      ansible.builtin.command: python3 /opt/komodo/setup-periphery.py
+
+- name: Ensure periphery service
+  ansible.builtin.systemd_service:
+    name: periphery
+    enabled: "{{ periphery_state == 'present' }}"
+    masked: "{{ periphery_state != 'present' }}"
+    state: "{{ periphery_state == 'present'|ternary('restarted', 'stopped') }}"

@@ -10,6 +10,7 @@
     name: serf.service
     enabled: no
     state: stopped
+  failed_when: false
 
 - name: Remove packages
   apt:
@@ -18,6 +19,7 @@
   vars:
     packages:
       - golang-go
+  failed_when: false
 
 - name: Remove installed artifacts
   file:
@@ -29,3 +31,4 @@
     - "/etc/systemd/system/serf.service"
     - "/etc/serf"
     - "/opt/serf/handlers"
+  failed_when: false

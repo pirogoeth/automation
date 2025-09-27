@@ -1,0 +1,160 @@
+data_dir = '/data'
+schema.log_namespace = true
+
+[api]
+enabled = true
+address = "0.0.0.0:8686"
+
+[sources.host_auth]
+type = "file"
+include = [
+  "/host/var/log/auth.log",
+]
+
+[sources.vector_metrics]
+type = "internal_metrics"
+
+[sources.vector_logs]
+type = "internal_logs"
+
+[transforms.vector_data_labels]
+type = "remap"
+inputs = ["vector_logs", "vector_metrics"]
+source = """
+  .appname = "vector"
+  .component = "internal"
+"""
+
+[sources.docker]
+type = "docker_logs"
+include_labels = [
+  "appname",
+  "component",
+]
+
+[transforms.docker_metadata]
+type = "remap"
+inputs = ["docker"]
+source = """
+  parse_mode = "json"
+  if %docker_logs.stream == "stderr" {
+    parse_mode = downcase(%docker_logs.labels.vector_stderr_parse_mode) ?? "json"
+  } else {
+    parse_mode = downcase(%docker_logs.labels.vector_stdout_parse_mode) ?? "json"
+  }
+
+  originalMessage = to_string(.) ?? "can't convert to string"
+
+  data = {}
+  err = null
+
+  if exists(.message) {
+    if parse_mode == "json" {
+      data, err = parse_json(.message)
+    } else if parse_mode == "logfmt" {
+      data, err = parse_logfmt(.message)
+    } else if parse_mode == "syslog" {
+      data, err = parse_syslog(.message)
+    } else if parse_mode == "commonlf" {
+      data, err = parse_common_log(.message)
+    } else if parse_mode == "combinedlf" {
+      data, err = parse_apache_log(.message, format: "combined")
+    } else {
+      log({"record": ., "parse_mode": parse_mode})
+      data = .
+    }
+  } else if exists(.msg) {
+    if parse_mode == "json" {
+      data, err = parse_json(.msg)
+    } else if parse_mode == "logfmt" {
+      data, err = parse_logfmt(.msg)
+    } else if parse_mode == "syslog" {
+      data, err = parse_syslog(.msg)
+    } else if parse_mode == "commonlf" {
+      data, err = parse_common_log(.msg)
+    } else if parse_mode == "combinedlf" {
+      data, err = parse_apache_log(.msg, format: "combined")
+    } else {
+      log({"record": ., "parse_mode": parse_mode})
+      data = .
+    }
+  } else {
+    if parse_mode == "json" {
+      data, err = parse_json(.)
+    } else if parse_mode == "logfmt" {
+      data, err = parse_logfmt(.)
+    } else if parse_mode == "syslog" {
+      data, err = parse_syslog(.)
+    } else if parse_mode == "commonlf" {
+      data, err = parse_common_log(.)
+    } else if parse_mode == "combinedlf" {
+      data, err = parse_apache_log(., format: "combined")
+    } else {
+      log({"record": ., "parse_mode": parse_mode})
+      data = .
+    }
+  }
+
+  if err != null { 
+    .error = err
+    .originalMessage = originalMessage
+  }
+
+  . = data
+
+  if %docker_logs.labels.appname == "" || !exists(%docker_logs.labels.appname) {
+    .appname = %docker_logs.image
+  } else {
+    .appname = %docker_logs.labels.appname
+  }
+
+  if %docker_logs.labels.component == "" || !exists(%docker_logs.labels.component) {
+    .component = .appname
+  } else {
+    .component = %docker_logs.labels.component
+  }
+
+  .metadata = {
+    "docker": {
+      "image": %docker_logs.image,
+      "stream": %docker_logs.stream,
+      "container": {
+        "id": %docker_logs.container_id,
+        "name": %docker_logs.container_name,
+      },
+    },
+    "vector": {
+      "parse_mode": parse_mode,
+    },
+  }
+"""
+
+[transforms.host_auth_parser]
+type = "remap"
+inputs = ["host_auth"]
+source = """
+  ., .error = parse_linux_authorization(.)
+"""
+
+[transforms.sampler]
+type = "sample"
+inputs = ["docker_metadata", "host_auth_parser"]
+key_field = "appname"
+rate = 100
+
+[sinks.loki]
+type = "loki"
+inputs = ["docker_metadata", "vector_data_labels", "host_auth_parser"]
+endpoint = "https://loki.2811rrt.net"
+encoding.codec = "json"
+labels = { "appname" = "{{appname}}", "component" = "{{component}}" }
+
+[sinks.console]
+type = "console"
+inputs = ["sampler"]
+encoding.codec = "json"
+
+[sinks.vector_receiver]
+type = "vector"
+inputs = ["vector_metrics"]
+address = "10.100.10.32:6000"

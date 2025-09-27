@@ -4,22 +4,28 @@ PIP := $(BIN)/python -m pip
 PY := $(BIN)/python
 export PATH := $(PATH)
 
-init:
-	asdf install python 3.11.7
-	asdf local python 3.11.7
-	python -m venv .venv
-	$(PY) -m ensurepip
-	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
+requirements-all.yml:
+	cat collections/requirements.yml roles/requirements.yml > ./requirements-all.yml
+
+.venv: .tool-versions pyproject.toml
+	asdf install python
+	asdf install uv
+	uv venv --seed --clear .venv
+	uv sync
 	make refresh-galaxy
 
+.PHONY: init
+init:
+	rm -rf .venv
+	make .venv
+
 .PHONY: refresh-galaxy
-refresh-galaxy:
-	ansible-galaxy collection install -r collections/requirements.yml $(args)
-	ansible-galaxy role install -r roles/requirements.yml $(args)
+refresh-galaxy: requirements-all.yml
+	ansible-galaxy collection install -r collections/requirements.yml
+	ansible-galaxy role install -r roles/requirements.yml
 
 .PHONY: run-play
-run-play:
+run-play: .venv requirements-all.yml
 ifndef play
 	echo "play=<path/to/play> argument is required"
 	exit 1

@@ -1,0 +1,7 @@
+---
+
+nvidia_container_toolkit_version: 1.17.8-1
+
+swarm_enabled: false
+# "none"|"manager"|"member"
+swarm_role: "none"

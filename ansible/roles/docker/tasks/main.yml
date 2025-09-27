@@ -1,3 +1,26 @@
 ---
-
 - include_tasks: gpu.yml
+  when: '"gpu" in system_roles|default([])'
+
+- name: Ensure drop-in directory
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+    recurse: yes
+    owner: root
+    group: root
+
+- name: Install docker systemd unit override file
+  copy:
+    src: docker.service.d/override.conf
+    dest: /etc/systemd/system/docker.service.d/override.conf
+    owner: root
+    group: root
+    mode: 0650
+  notify:
+    - Reload systemd
+
+- include_tasks: swarm.yml
+  when:
+    - "swarm_enabled|default(false) is true"
+    - 'swarm_role in ["manager", "member"]'
