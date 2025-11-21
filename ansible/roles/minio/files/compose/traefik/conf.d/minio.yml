@@ -3,27 +3,30 @@
 http:
   routers:
     minio-console:
-      rule: "Host(`console.s3.2811rrt.net`)"
+      priority: 100
+      rule: "Host(`console.s3.{{ minio_base_domain }}`)"
       entrypoints:
       - "web-secure"
       service: "minio-console"
       tls:
         certResolver: "letsencrypt_prod"
         domains:
-        - main: "s3.2811rrt.net"
+        - main: "s3.{{ minio_base_domain }}"
           sans:
-          - "*.s3.2811rrt.net"
+          - "*.s3.{{ minio_base_domain }}"
     minio-api:
-      rule: "Host(`s3.2811rrt.net`) || HostRegexp(`^.+\\.s3\\.2811rrt\\.net$`)"
+      priority: 50
+      rule: "Host(`s3.{{ minio_base_domain }}`) || HostRegexp(`^.+\\.s3\\.{{ minio_base_domain }}$`)"
       entrypoints:
       - "web-secure"
+      - "cftunnel-secure"
       service: "minio-api"
       tls:
         certResolver: "letsencrypt_prod"
         domains:
-        - main: "s3.2811rrt.net"
+        - main: "s3.{{ minio_base_domain }}"
           sans:
-          - "*.s3.2811rrt.net"
+          - "*.s3.{{ minio_base_domain }}"
 
   services:
     minio-console:

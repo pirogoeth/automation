@@ -1,0 +1,104 @@
+---
+- name: Template stack configuration
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ periphery_stack_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0644') }}"
+    backup: "yes"
+  register: app_configs
+  loop:
+    - src: "vector/config.toml.j2"
+      dest: "vector.toml"
+    - src: "env.j2"
+      dest: ".env"
+
+- name: Create Docker configs
+  community.docker.docker_config:
+    name: "{{ ns }}_{{ item.name }}_{{ timestamp }}"
+    data_src: "{{ periphery_stack_dir }}/{{ item.file }}"
+    labels:
+      deployment: "komodo-periphery"
+      timestamp: "{{ timestamp }}"
+    state: present
+  when: app_configs is changed
+  vars:
+    ns: komodo-periphery
+    timestamp: "{{ '%Y%m%d%H%M%S'|strftime }}"
+  loop:
+    - name: "vector-config"
+      file: "vector.toml"
+      alias: "vector_config"
+  register: configs
+
+- name: Write last configs result
+  ansible.builtin.copy:
+    content: |
+      {{ configs }}
+    dest: "{{ periphery_stack_dir }}/configs.json"
+    backup: "yes"
+  when:
+    - configs is changed
+  register: config_refs
+
+- name: Load last configs result if unchanged
+  ansible.builtin.slurp:
+    src: "{{ periphery_stack_dir }}/configs.json"
+  when:
+    - configs is not changed
+  register: configs_raw
+
+- name: Unpack raw configs
+  ansible.builtin.set_fact:
+    configs: "{{ configs_raw.content|b64decode|from_json }}"
+  when:
+    - configs_raw is not skipped
+
+- name: Template stack
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ periphery_stack_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0644') }}"
+    backup: "yes"
+  register: stack
+  loop:
+    - src: "stack.yml.j2"
+      dest: "stack.yml"
+  vars:
+    configs: |-
+      {% if configs_raw is defined %}
+        {{ configs_raw.content|b64decode|from_json }}
+      {% else %}
+        {{ configs }}
+      {% endif %}
+
+- name: Stack deployment
+  community.docker.docker_stack:
+    name: "komodo"
+    compose:
+      - "{{ periphery_stack_dir }}/stack.yml"
+    detach: false
+    state: "{{ periphery_state }}"
+  register: stack_deploy
+  when:
+    - stack is changed
+  environment:
+    STACK_DIR: "{{ periphery_stack_dir }}"
+    PERIPHERY_VERSION: "{{ periphery_version }}"
+    PERIPHERY_ROOT_DIRECTORY: "{{ periphery_data_dir }}"
+  failed_when: '"rolling back" in stack_deploy.stdout'
+
+- name: Output stack deployment warnings
+  debug:
+    msg: |
+      Docker stack deploy emitted some warnings:
+      {% for line in stack_deploy.stderr_lines %}
+      {%- if line.strip() != "" %}
+        - {{ line }}
+      {% endif %}{% endfor %}
+  when:
+    - stack_deploy is changed
+    - stack_deploy.stderr.strip() != ""

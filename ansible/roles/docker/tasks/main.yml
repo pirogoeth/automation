@@ -1,6 +1,4 @@
 ---
-- include_tasks: gpu.yml
-  when: '"gpu" in system_roles|default([])'
 
 - name: Ensure drop-in directory
   file:
@@ -19,6 +17,9 @@
     mode: 0650
   notify:
     - Reload systemd
+
+- include_tasks: gpu.yml
+  when: '"gpu" in system_roles|default([])'
 
 - include_tasks: swarm.yml
   when:

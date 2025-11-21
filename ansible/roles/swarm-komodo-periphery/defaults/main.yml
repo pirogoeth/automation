@@ -1,6 +1,7 @@
 ---
-compose_stack_dir: "/opt/komodo"
-compose_data_dir: "/komodo"
+
+periphery_stack_dir: "/opt/komodo"
+periphery_data_dir: "/komodo"
 
 periphery_version: latest
 periphery_state: present

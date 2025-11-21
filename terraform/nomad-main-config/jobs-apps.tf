@@ -8,18 +8,18 @@ resource "random_string" "miniflux_admin_password" {
   special = true
 }
 
-resource "nomad_job" "miniflux" {
-  jobspec = file("${local.jobs}/apps/miniflux.nomad.hcl")
-
-  hcl2 {
-    vars = {
-      admin_username = "sean"
-      admin_password = random_string.miniflux_admin_password.result
-      domain         = var.service_base_domain
-      version        = local.miniflux_version
-    }
-  }
-}
+# resource "nomad_job" "miniflux" {
+#   jobspec = file("${local.jobs}/apps/miniflux.nomad.hcl")
+# 
+#   hcl2 {
+#     vars = {
+#       admin_username = "sean"
+#       admin_password = random_string.miniflux_admin_password.result
+#       domain         = var.service_base_domain
+#       version        = local.miniflux_version
+#     }
+#   }
+# }
 
 resource "nomad_job" "n8n" {
   jobspec = file("${local.jobs}/apps/n8n.nomad.hcl")

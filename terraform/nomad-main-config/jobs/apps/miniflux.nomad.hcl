@@ -82,12 +82,8 @@ job "miniflux" {
           "prometheus.io/path=/metrics",
           "traefik.enable=true",
           "traefik.http.routers.miniflux.rule=Host(`news.${var.domain}`)",
-          "traefik.http.routers.miniflux.entrypoints=web",
-          "traefik.http.routers.miniflux.middlewares=miniflux-https-redirect",
-          "traefik.http.middlewares.miniflux-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.miniflux-secure.rule=Host(`news.${var.domain}`)",
-          "traefik.http.routers.miniflux-secure.entrypoints=web-secure",
-          "traefik.http.routers.miniflux-secure.tls=true",
+          "traefik.http.routers.miniflux.entrypoints=web-secure",
+          "traefik.http.routers.miniflux.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
           # "traefik.http.routers.miniflux-secure.tls.certresolver=letsencrypt",
         ]

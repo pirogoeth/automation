@@ -13,7 +13,13 @@ hypervisors:
       ansible_port: 22
       ansible_python_interpreter: python3
       ansible_user: ubuntu
-      bqase_tailscale_up_skip: false
+      base_tailscale_up_skip: false
+    pve-001-int:
+      ansible_host: 10.100.0.7
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: sean
+      base_tailscale_up_skip: false
 
 docker:
   children:
@@ -22,13 +28,6 @@ docker:
 
 komodo_periphery_hosts:
   hosts:
-    docker-workload-000-int:
-      ansible_host: 10.100.10.20
-      ansible_port: 22
-      ansible_python_interpreter: python3
-      ansible_user: seanj
-      base_tailscale_up_skip: false
-      periphery_install_type: direct
     tailgw-001-int:
       ansible_host: tailgw-001-int
       ansible_port: 22
@@ -43,6 +42,13 @@ komodo_periphery_hosts:
       ansible_user: seanj
       base_tailscale_up_skip: false
       periphery_install_type: direct
+    maestro:
+      ansible_host: 10.100.0.13
+      ansible_port: 22
+      ansible_python_interpreter: python3
+      ansible_user: seanj
+      base_tailscale_up_skip: false
+      periphery_install_type: direct
     swarmer-0.maas:
       ansible_host: 10.100.10.20
       ansible_port: 22
@@ -51,20 +57,36 @@ komodo_periphery_hosts:
       base_tailscale_up_skip: false
       periphery_install_type: docker
       periphery_docker_mode: swarm
-      swarm_enabled: true
-      swarm_role: manager
-      swarm_group: default
     docker-1.maas:
       ansible_host: 10.100.10.19
       ansible_port: 22
       ansible_python_interpreter: python3
       ansible_user: seanj
-      bqase_tailscale_up_skip: false
-      swarm_enabled: true
-      swarm_role: member
-      swarm_group: default
+      base_tailscale_up_skip: false
 
 swarm_default:
   hosts:
     swarmer-0.maas:
+      swarm_enabled: true
+      swarm_role: manager
+      swarm_group: default
     docker-1.maas:
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default
+    docker-0.c.2811rrt.net:
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default
+    docker-gpu-0.c.2811rrt.net:
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default
+    pve-001-int:
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default
+    maestro:
+      swarm_enabled: true
+      swarm_role: member
+      swarm_group: default

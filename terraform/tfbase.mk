@@ -9,9 +9,9 @@ all: plan
 
 plan: *.tf
 ifdef target
-	$(TF) plan -var-file $(VARSDIR)/$(VARS_NAME).tfvars -out plan -target "$(target)" || rm plan
+	$(TF) plan -var-file $(VARSDIR)/$(VARS_NAME).tfvars -out plan -target "$(target)" $(args) || rm plan
 else
-	$(TF) plan -var-file $(VARSDIR)/$(VARS_NAME).tfvars -out plan || rm plan
+	$(TF) plan -var-file $(VARSDIR)/$(VARS_NAME).tfvars -out plan $(args) || rm plan
 endif
 
 .PHONY: apply

@@ -1,0 +1,180 @@
+---
+- name: Create stack directory
+  ansible.builtin.file:
+    path: "{{ swarm_traefik_ingress_stack_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Set facts for template context
+  ansible.builtin.set_fact:
+    swarm_manager_host: "{{ hostvars[swarm_manager]['ansible_default_ipv4']['address'] }}"
+    swarm_manager_host_tailscale: "{{ hostvars[swarm_manager]['ansible_tailscale0']['ipv4']['address'] }}"
+
+- name: Template stack configuration
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ swarm_traefik_ingress_stack_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0644') }}"
+    backup: "yes"
+  register: app_configs
+  loop:
+    - src: "traefik.yml.j2"
+      dest: "traefik.yml"
+    - src: "api.yml.j2"
+      dest: "api.yml"
+    - src: "middlewares.yml.j2"
+      dest: "middlewares.yml"
+    - src: "env.j2"
+      dest: ".env"
+      mode: "0600"
+
+- name: Set deployment timestamp
+  ansible.builtin.set_fact:
+    deployment_timestamp: "{{ '%Y%m%d%H%M%S'|strftime }}"
+
+- name: Create Docker configs
+  community.docker.docker_config:
+    name: "{{ ns }}_{{ item.name }}_{{ deployment_timestamp }}"
+    data_src: |-
+      {%- if item.content is not defined -%}
+        {{ swarm_traefik_ingress_stack_dir~'/'~item.file }}
+      {%- else -%}
+        {{ omit }}
+      {%- endif -%}
+    data: |-
+      {%- if item.content is defined -%}
+        {{ item.content }}
+      {%- else -%}
+        {{ omit }}
+      {%- endif -%}
+    labels:
+      deployment: "swarm-traefik-ingress"
+      ansible_managed: "true"
+    state: present
+  when:
+    - app_configs is changed or traefik_custom_configs is defined
+  vars:
+    ns: traefik
+    timestamp:
+    builtin_configs:
+      - name: "config"
+        file: "traefik.yml"
+        alias: "traefik_config"
+        destination: "/config/traefik.yml"
+      - name: "middlewares"
+        file: "middlewares.yml"
+        alias: "traefik_middlewares"
+      - name: "api"
+        file: "api.yml"
+        alias: "traefik_api"
+  loop: "{{ builtin_configs + (traefik_custom_configs|default([])) }}"
+  register: configs
+
+- name: Write last configs result
+  ansible.builtin.copy:
+    content: |
+      {{ configs }}
+    dest: "{{ swarm_traefik_ingress_stack_dir }}/configs.json"
+    backup: "yes"
+  when:
+    - configs is changed
+  register: config_refs
+
+- name: Load last configs result if unchanged
+  ansible.builtin.slurp:
+    src: "{{ swarm_traefik_ingress_stack_dir }}/configs.json"
+  when:
+    - configs is not changed
+  register: configs_raw
+
+- name: Unpack raw configs
+  ansible.builtin.set_fact:
+    configs: "{{ configs_raw.content|b64decode|from_json }}"
+  when:
+    - configs_raw is not skipped
+
+- name: Template stack
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ swarm_traefik_ingress_stack_dir }}/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode | default('0644') }}"
+    backup: "yes"
+  register: stack
+  loop:
+    - src: "stack.yml.j2"
+      dest: "stack.yml"
+  vars:
+    configs: |-
+      {% if configs_raw is defined %}
+        {{ configs_raw.content|b64decode|from_json }}
+      {% else %}
+        {{ configs }}
+      {% endif %}
+
+- name: Deployment
+  block:
+    - name: Deploy swarm traefik ingress stack
+      community.docker.docker_stack:
+        name: "{{ swarm_traefik_ingress_stack_name }}"
+        compose:
+          - "{{ swarm_traefik_ingress_stack_dir }}/stack.yml"
+        state: present
+      register: stack_deploy
+      when:
+        - stack is changed
+
+    - name: Wait for deployment to settle
+      ansible.builtin.wait_for:
+        timeout: 15
+
+    - name: Check if traefik is healthy via API
+      ansible.builtin.uri:
+        url: "http://{{ ansible_default_ipv4.address }}:8889/ping"
+        method: GET
+        status_code: 200
+        validate_certs: false
+      register: traefik_health
+      until:
+        - traefik_health is success
+        - traefik_health.status == 200
+      retries: 30
+      delay: 10
+
+  rescue:
+    - name: Perform rollback on failure
+      when:
+        - stack_deploy is failed or traefik_health is failed
+      block:
+        - name: Stack file rollback
+          ansible.builtin.copy:
+            src: "{{ stack.backup_file }}"
+            dest: "{{ stack.dest }}"
+          when:
+            - stack.backup_file is defined
+
+        - name: Config files rollback
+          ansible.builtin.copy:
+            src: "{{ item.backup_file }}"
+            dest: "{{ item.dest }}"
+          when:
+            - item.backup_file is defined
+          loop: "{{ app_configs.results }}"
+
+        - name: Config refs rollback
+          ansible.builtin.copy:
+            src: "{{ config_refs.backup_file }}"
+            dest: "{{ config_refs.dest }}"
+          when:
+            - config_refs.backup_file is defined
+
+        - name: Remove Docker configs
+          community.docker.docker_config:
+            name: "{{ item.config_name }}"
+            state: absent
+          loop: "{{ configs.results }}"

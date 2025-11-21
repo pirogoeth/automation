@@ -12,21 +12,11 @@
     state: stopped
   failed_when: false
 
-- name: Remove packages
-  apt:
-    name: "{{ packages }}"
-    state: absent
-  vars:
-    packages:
-      - golang-go
-  failed_when: false
-
 - name: Remove installed artifacts
   file:
-    name: "{{ GOPATH.stdout }}"
+    name: "{{ item }}"
     state: absent
   loop:
-    - "{{ GOPATH.stdout }}"
     - "/usr/local/bin/serf"
     - "/etc/systemd/system/serf.service"
     - "/etc/serf"

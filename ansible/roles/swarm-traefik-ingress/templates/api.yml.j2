@@ -1,0 +1,16 @@
+# vim: set ft=yaml:
+---
+http:
+  routers:
+    traefik-api:
+      rule: "(PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
+      entrypoints:
+      - traefik-api
+      service: "api@internal"
+      tls: false
+    traefik-ping:
+      rule: "Path(`/ping`)"
+      entrypoints:
+      - traefik-api
+      service: "ping@internal"
+      tls: false

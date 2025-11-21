@@ -196,12 +196,8 @@ EOH
         tags = [
           "traefik.enable=true",
           "traefik.http.routers.prometheus.rule=Host(`prometheus.${var.domain}`)",
-          "traefik.http.routers.prometheus.entrypoints=web",
-          "traefik.http.routers.prometheus.middlewares=prometheus-https-redirect",
-          "traefik.http.middlewares.prometheus-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.prometheus-secure.rule=Host(`prometheus.${var.domain}`)",
-          "traefik.http.routers.prometheus-secure.entrypoints=web-secure",
-          "traefik.http.routers.prometheus-secure.tls=true",
+          "traefik.http.routers.prometheus.entrypoints=web-secure",
+          "traefik.http.routers.prometheus.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
           # "traefik.http.routers.prometheus-secure.tls.certresolver=letsencrypt",
         ]

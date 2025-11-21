@@ -76,7 +76,6 @@ job "open-webui" {
           "traefik.http.routers.llm-open-webui.rule=Host(`llms.${var.domain}`)",
           "traefik.http.routers.llm-open-webui.entrypoints=web-secure",
           "traefik.http.routers.llm-open-webui.tls=true",
-          "traefik.http.routers.llm-open-webui.tls.certresolver=letsencrypt-prod",
         ]
 
         check {

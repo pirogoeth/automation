@@ -32,3 +32,5 @@ nullmailer_remotes:
     port: 465
     user: me@gmail.com
     password: Passwordl0l!
+
+sshguard_allow: []

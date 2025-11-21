@@ -1,51 +1,37 @@
 ---
-
 - hosts: localhost
   tags: [always]
-  vars:
-    tf_binary: "{{ 'tofu'|which }}"
-    tf_project_path: "{{ (playbook_dir, '..', 'terraform', 'nomad-main', 'infra')|path_join }}"
   tasks:
-  - name: Initialize Terraform backend
-    command:
-      cmd: "{{ tf_binary }} init"
-      creates: "{{ (tf_project_path, '.terraform')|path_join }}"
-      chdir: "{{ tf_project_path }}"
-    when:
-    - tf_initialize_backend|default(false)
+    - name: Load terraform outputs
+      ansible.builtin.include_tasks: tasks/load-hosts.yml
+      vars:
+        infra_project: "rrtnet-infra"
 
-  - name: Read Terraform outputs
-    set_fact:
-      _terraform_outputs: "{{ lookup('cloud.terraform.tf_output', **args) }}"
-      tf_project_path: "{{ tf_project_path }}"
-    vars:
-      args:
-        binary_path: "{{ tf_binary }}"
-        project_path: "{{ tf_project_path }}"
-        workspace: "nomad-main-infra"
-
-  - name: Add minio server nodes
-    add_host:
-      name: "{{ item['name'] }}"
-      groups: [minio_server]
-      ansible_host: "{{ item['ip'] }}"
-      ansible_user: "{{ item['user'] }}"
-      ansible_python_interpreter: /usr/bin/python3
-      tf_project_path: "{{ tf_project_path }}"
-      tf_state_outputs: "{{ _terraform_outputs }}"
-      attributes: "{{ item['attributes'] }}"
-    loop: "{{ _terraform_outputs['minio_server_inventory']['value'] }}"
-    changed_when: false
+    - name: Add minio server nodes
+      add_host:
+        name: "{{ item['name'] }}"
+        groups: [minio_server]
+        ansible_host: "{{ item['ip'] }}"
+        ansible_user: "{{ item['user'] }}"
+        ansible_python_interpreter: /usr/bin/python3
+        tf_project_path: "{{ tf_project_path }}"
+        tf_state_outputs: "{{ _terraform_outputs }}"
+        attributes: "{{ item['attributes'] }}"
+      loop: "{{ _terraform_outputs['minio_server_inventory']['value'] }}"
+      changed_when: false
 
 - ansible.builtin.import_playbook: "play-base.yml"
   tags: [base]
   vars:
     base_tailscale_up_skip: false
+    _target: "{{ target|default('minio_server') }}"
 
-- hosts: "{{ limit | default('minio_server') }}"
+- hosts: "{{ target|default('minio_server') }}"
   become: true
   roles:
-  - role: docker
-    tags: [docker]
-  - role: minio
-    tags: [minio]
+    - role: geerlingguy.docker
+      tags: [base, docker]
+    - role: docker
+      tags: [docker]
+    - role: minio
+      tags: [minio]

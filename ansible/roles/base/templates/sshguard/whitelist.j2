@@ -6,5 +6,5 @@
 127.0.0.0/8
 # tailscale
 100.64.0.0/10
-# allowed hostnames
-{% for domain in sshguard_allow_hostnames %}{{ domain }}{% endfor %}
+# allowed entries
+{% for domain in sshguard_allow %}{{ domain }}{% endfor %}

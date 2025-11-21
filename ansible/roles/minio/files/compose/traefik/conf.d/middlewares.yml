@@ -1,0 +1,9 @@
+http:
+  middlewares:
+    fail2ban: {}
+    cloudflare:
+      plugin:
+        cloudflare:
+          trustedCIDRs: {{ minio_cloudflare_trusted_cidrs|to_json }}
+          overwriteRequestHeader: true
+          appendXForwardedFor: true

@@ -1,0 +1,122 @@
+# vim: set ft=yaml:
+---
+log:
+  level: "DEBUG"
+  format: "json"
+
+accessLog:
+  format: "json"
+
+entryPoints:
+  web-plain:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: "web-secure"
+          scheme: "https"
+  web-secure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: "default-le"
+  traefik-api:
+    address: ":8889"
+  traefik-metrics:
+    address: ":8891"
+  cftunnel-secure:
+    address: ":1443"
+    http:
+      middlewares:
+        - "cloudflare@file"
+      tls:
+        certResolver: "default-le"
+
+certificatesResolvers:
+  staging-le:
+    acme:
+      email: "{{ traefik_acme_email }}"
+      caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+      storage: "/acme/staging.json"
+      dnsChallenge:
+        provider: "cloudflare"
+        delayBeforeCheck: 15
+        resolvers: ["1.1.1.1:53", "8.8.8.8:53"]
+  default-le:
+    acme:
+      email: "{{ traefik_acme_email }}"
+      caServer: "https://acme-v02.api.letsencrypt.org/directory"
+      storage: "/acme/production.json"
+      dnsChallenge:
+        provider: "cloudflare"
+        delayBeforeCheck: 15
+        resolvers: ["1.1.1.1:53", "8.8.8.8:53"]
+
+api:
+  dashboard: true
+
+ping:
+  entryPoint: "traefik-api"
+  manualRouting: true
+
+metrics:
+  prometheus:
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    addRoutersLabels: true
+    entryPoint: "traefik-metrics"
+
+providers:
+  # Primary provider: Redis (populated by traefik-kop)
+  redis:
+    endpoints:
+      - "{{ swarm_manager_host }}:6379"
+    rootKey: "traefik"
+
+  # File provider for middlewares and static config
+  file:
+    directory: "/config/conf.d"
+    watch: true
+
+  # Secondary provider: Docker Swarm (for self-service like Traefik dashboard)
+  swarm:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: "ingress"
+    watch: true
+
+  nomad:
+    refreshInterval: "15s"
+    endpoint:
+      address: "https://10.100.10.32:4646"
+      tls:
+        ca: "/config/conf.d/nomad-ca.pem"
+        cert: "/config/conf.d/nomad-cli.pem"
+        key: "/config/conf.d/nomad-cli-key.pem"
+        insecureSkipVerify: true
+    exposedByDefault: false
+    namespaces:
+      [
+        "apps",
+        "continuous-integration",
+        "data",
+        "nomad-system",
+        "monitoring",
+        "security",
+      ]
+
+# Optional: Tracing configuration
+tracing:
+  serviceName: traefik
+  sampleRate: 0.1
+  otlp:
+    grpc:
+      endpoint: "tempo-ingest.{{ traefik_domain }}:443"
+
+experimental:
+  plugins: {{ traefik_plugins|default({})|combine(__traefik_default_plugins)|to_json }}

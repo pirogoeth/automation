@@ -147,7 +147,7 @@ type = "loki"
 inputs = ["docker_metadata", "vector_data_labels", "host_auth_parser"]
 endpoint = "https://loki.2811rrt.net"
 encoding.codec = "json"
-labels = { "appname" = "{{appname}}", "component" = "{{component}}" }
+labels = { "appname" = "{{ "{{appname}}" }}", "component" = "{{ "{{component}}" }}" }
 
 [sinks.console]
 type = "console"

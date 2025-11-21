@@ -64,7 +64,7 @@ job "tempo" {
       user   = "nobody"
 
       config {
-        image = "docker.io/bitnami/grafana-tempo:${var.version}"
+        image = "docker.io/bitnamilegacy/grafana-tempo:${var.version}"
 
         ports = [
           "http",
@@ -150,12 +150,8 @@ S3_INSECURE=${var.s3_insecure}
 
           "traefik.enable=true",
           "traefik.http.routers.tempo-http.rule=Host(`tempo.${var.domain}`)",
-          "traefik.http.routers.tempo-http.entrypoints=web",
-          "traefik.http.routers.tempo-http.middlewares=tempo-https-redirect",
-          "traefik.http.routers.tempo-http-secure.rule=Host(`tempo.${var.domain}`)",
-          "traefik.http.routers.tempo-http-secure.entrypoints=web-secure",
-          "traefik.http.routers.tempo-http-secure.tls=true",
-          "traefik.http.middlewares.tempo-https-redirect.redirectscheme.scheme=https",
+          "traefik.http.routers.tempo-http.entrypoints=web-secure",
+          "traefik.http.routers.tempo-http.tls=true",
         ]
 
         check {
@@ -177,9 +173,9 @@ S3_INSECURE=${var.s3_insecure}
 
         tags = [
           "traefik.enable=true",
-          "traefik.http.routers.tempo-ingest-http-secure.rule=Host(`tempo-ingest-http.${var.domain}`)",
-          "traefik.http.routers.tempo-ingest-http-secure.entrypoints=web-secure",
-          "traefik.http.routers.tempo-ingest-http-secure.tls=true",
+          "traefik.http.routers.tempo-ingest-http.rule=Host(`tempo-ingest-http.${var.domain}`)",
+          "traefik.http.routers.tempo-ingest-http.entrypoints=web-secure",
+          "traefik.http.routers.tempo-ingest-http.tls=true",
         ]
 
         check {
@@ -201,11 +197,11 @@ S3_INSECURE=${var.s3_insecure}
 
         tags = [
           "traefik.enable=true",
-          "traefik.http.routers.tempo-grpc-secure.rule=Host(`tempo-ingest.${var.domain}`) || Host(`tempo-ingest-grpc.${var.domain}`)",
-          "traefik.http.routers.tempo-grpc-secure.entrypoints=web-secure",
-          "traefik.http.routers.tempo-grpc-secure.tls=true",
-          "traefik.http.routers.tempo-grpc-secure.service=tempo-grpc-secure",
-          "traefik.http.services.tempo-grpc-secure.loadbalancer.server.scheme=h2c",
+          "traefik.http.routers.tempo-grpc.rule=Host(`tempo-ingest.${var.domain}`) || Host(`tempo-ingest-grpc.${var.domain}`)",
+          "traefik.http.routers.tempo-grpc.entrypoints=web-secure",
+          "traefik.http.routers.tempo-grpc.tls=true",
+          "traefik.http.routers.tempo-grpc.service=tempo-grpc",
+          "traefik.http.services.tempo-grpc.loadbalancer.server.scheme=h2c",
         ]
 
         check {

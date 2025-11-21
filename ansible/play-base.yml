@@ -1,11 +1,13 @@
 ---
-
-- hosts: all
+- hosts: "{{ target|default(_target|default('all')) }}"
   become: yes
   roles:
-  - role: artis3n.tailscale.machine
-    vars:
-      verbose: true
-      tailscale_up_skip: "{{ base_tailscale_up_skip|default(true) }}"
-    tags: [tailscale, services]
-  - role: "{{ packer_image_type|default('base') }}"
+    - role: artis3n.tailscale.machine
+      vars:
+        verbose: true
+        tailscale_up_skip: "{{ base_tailscale_up_skip|default(true) }}"
+      tags: [tailscale, services]
+    - role: "{{ packer_image_type|default('base') }}"
+      tags: [base]
+    - role: geerlingguy.pip
+      tags: [base, pip]

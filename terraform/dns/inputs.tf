@@ -20,3 +20,6 @@ variable "dns_key_secret" {
   sensitive = true
 }
 
+variable "traefik_hosts" {
+  type = list(string)
+}

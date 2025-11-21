@@ -73,12 +73,8 @@ EOF
         tags = [
           "traefik.enable=true",
           "traefik.http.routers.changedetection.rule=Host(`changedet.${var.domain}`)",
-          "traefik.http.routers.changedetection.entrypoints=web",
-          "traefik.http.routers.changedetection.middlewares=changedetection-https-redirect",
-          "traefik.http.middlewares.changedetection-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.changedetection-secure.rule=Host(`changedet.${var.domain}`)",
-          "traefik.http.routers.changedetection-secure.entrypoints=web-secure",
-          "traefik.http.routers.changedetection-secure.tls=true",
+          "traefik.http.routers.changedetection.entrypoints=web-secure",
+          "traefik.http.routers.changedetection.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
           # "traefik.http.routers.changedetection-secure.tls.certresolver=letsencrypt",
         ]
@@ -103,9 +99,9 @@ EOF
       driver = "docker"
 
       env {
-        SCREEN_WIDTH            = 1920
-        SCREEN_HEIGHT           = 1024
-        SCREEN_DEPTH            = 16
+        SCREEN_WIDTH                    = 1920
+        SCREEN_HEIGHT                   = 1024
+        SCREEN_DEPTH                    = 16
         MAX_CONCURRENT_CHROME_PROCESSES = 10
       }
 

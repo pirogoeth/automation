@@ -1,0 +1,52 @@
+---
+- name: Make stack directory
+  ansible.builtin.file:
+    path: "{{ dozzle_stack_dir }}"
+    state: "directory"
+    owner: "root"
+    group: "root"
+    recurse: yes
+
+- name: Template stack configuration
+  ansible.builtin.template:
+    src: "templates/{{ item.src }}"
+    dest: "{{ dozzle_stack_dir }}/{{ item.dest }}"
+    owner: "root"
+    group: "root"
+    mode: "{{ item.mode | default('0640') }}"
+  register: stack_configs
+  loop:
+    - src: "stack.yml.j2"
+      dest: "stack.yml"
+    - src: "env.j2"
+      dest: ".env"
+      mode: "0600"
+  notify: Restart stack
+
+- name: Stack deployment
+  community.docker.docker_stack:
+    name: "dozzle"
+    compose:
+      - "{{ dozzle_stack_dir }}/stack.yml"
+    detach: false
+    state: "{{ dozzle_state }}"
+  when:
+    - stack_configs is changed
+  register: stack_deployment
+  environment:
+    STACK_DIR: "{{ dozzle_stack_dir }}"
+    DOZZLE_VERSION: "{{ dozzle_version }}"
+    DOZZLE_ROOT_DIRECTORY: "{{ dozzle_data_dir }}"
+  failed_when: '"rolling back" in stack_deployment.stdout'
+
+- name: Output stack deployment warnings
+  debug:
+    msg: |
+      Docker stack deploy emitted some warnings:
+      {% for line in stack_deployment.stderr_lines %}
+      {%- if line.strip() != "" %}
+        - {{ line }}
+      {% endif %}{% endfor %}
+  when:
+    - stack_deployment is changed
+    - stack_deployment.stderr.strip() != ""

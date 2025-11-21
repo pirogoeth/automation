@@ -87,15 +87,15 @@ job "traefik" {
         provider = "nomad"
 
         tags = [
-          "traefik.enable=true",
-          "traefik.http.routers.traefik-api.rule=Host(`traefik.${var.domain}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))",
-          "traefik.http.routers.traefik-api.entrypoints=traefik-api",
-          "traefik.http.routers.traefik-api.service=api@internal",
-          "traefik.http.routers.traefik-api.tls=true",
-          "traefik.http.routers.traefik-api.tls.certResolver=letsencrypt",
-          "traefik.http.routers.traefik-ping.rule=PathPrefix(`/ping`)",
-          "traefik.http.routers.traefik-ping.entrypoints=traefik-api",
-          "traefik.http.routers.traefik-ping.service=ping@internal",
+          # "traefik.enable=false",
+          # "traefik.http.routers.traefik-api.rule=Host(`traefik.${var.domain}`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))",
+          # "traefik.http.routers.traefik-api.entrypoints=traefik-api",
+          # "traefik.http.routers.traefik-api.service=api@internal",
+          # "traefik.http.routers.traefik-api.tls=true",
+          # "traefik.http.routers.traefik-api.tls.certResolver=letsencrypt",
+          # "traefik.http.routers.traefik-ping.rule=PathPrefix(`/ping`)",
+          # "traefik.http.routers.traefik-ping.entrypoints=traefik-api",
+          # "traefik.http.routers.traefik-ping.service=ping@internal",
         ]
 
         check {

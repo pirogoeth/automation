@@ -1,0 +1,173 @@
+# vim: set ft=yaml:
+---
+version: '3.8'
+
+networks:
+  host:
+    external: true
+    name: host
+  ingress:
+    driver: overlay
+    attachable: true
+  backend:
+    driver: overlay
+    attachable: true
+    
+volumes:
+  redis_data:
+  traefik_acme:
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  redis:
+    image: docker.io/library/redis:{{ redis_version }}
+    command: 
+    - --appendonly
+    - yes
+    - --maxmemory
+    - {{ redis_max_memory }}
+    - --maxmemory-policy
+    - allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    ports:
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: {{ redis_memory_limit }}
+        reservations:
+          memory: {{ redis_memory_reservation }}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  traefik-kop:
+    image: ghcr.io/jittering/traefik-kop:{{ traefik_kop_version }}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+{% if traefik_kop_redis_address == "tailscale" %}
+      - REDIS_ADDR={{ swarm_manager_host_tailscale }}:6379
+{% elif traefik_kop_redis_address == "direct" %}
+      - REDIS_ADDR={{ swarm_manager_host }}:6379
+{% else %}
+      - REDIS_ADDR={{ traefik_kop_redis_address }}:6379
+{% endif %}
+      - KOP_POLL_INTERVAL={{ traefik_kop_poll_interval }}
+{% if traefik_kop_namespace %}
+      - NAMESPACE={{ traefik_kop_namespace }}
+{% endif %}
+{% for optionKey, optionValue in traefik_kop_options|default({})|items %}
+      - {{ optionKey }}={{ optionValue }}
+{% endfor %}
+    networks: [host]
+    deploy:
+      mode: global
+      resources:
+        limits:
+          memory: {{ traefik_kop_memory_limit }}
+        reservations:
+          memory: {{ traefik_kop_memory_reservation }}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 10
+    logging: *default-logging
+    depends_on:
+      - redis
+
+  traefik:
+    image: docker.io/library/traefik:{{ traefik_version }}
+    command:
+      - --configfile=/config/traefik.yml
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+      - target: 8889
+        published: 8889
+        protocol: tcp
+        mode: host
+      - target: 8891
+        published: 8891
+        protocol: tcp
+        mode: host
+      # Cloudflare tunnel port
+      - target: 1443
+        published: 1443
+        protocol: tcp
+        mode: host
+    volumes:
+      - traefik_acme:/acme
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    configs:
+{% for config in configs.results %}
+      - source: "{{ config.item.alias }}"
+        target: "{{ config.item.destination|default("/config/conf.d/"~config.item.file) }}"
+{% endfor %}
+    environment:
+      - CF_API_EMAIL={{ traefik_acme_cloudflare_email }}
+      - CF_API_KEY={{ traefik_acme_cloudflare_apikey }}
+    networks:
+      - ingress
+      - backend
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          memory: {{ traefik_memory_limit }}
+        reservations:
+          memory: {{ traefik_memory_reservation }}
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+    logging: *default-logging
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--configfile", "/config/traefik.yml"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+configs:
+{% for config in configs.results %}
+  "{{ config.item.alias }}":
+    external: true
+    name: "{{ config.config_name }}"
+{% endfor %}

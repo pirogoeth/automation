@@ -1,0 +1,15 @@
+# vim: set ft=yaml:
+---
+http:
+  middlewares:
+{% if traefik_enable_fail2ban_middleware %}
+    fail2ban: {}
+{% endif %}
+{% if traefik_enable_cloudflare_middleware %}
+    cloudflare:
+      plugin:
+        cloudflare:
+          trustedCIDRs: {{ cloudflare_trusted_cidrs|to_json }}
+          overwriteRequestHeader: true
+          appendXForwardedFor: true
+{% endif %}

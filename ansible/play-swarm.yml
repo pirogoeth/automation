@@ -32,21 +32,32 @@
       vars:
         verbose: true
       tags: [tailscale]
+    # Required to pivot into Ansible virtualenv
     - role: base
-      tags: [base]
+      tags: [base, always]
+  tags: [always, preflight]
+
+- hosts: "{{ target|default('docker') }}"
+  become: yes
+  roles:
     - role: geerlingguy.pip
       tags: [base, pip]
     - role: geerlingguy.docker
       tags: [base, docker]
     - role: docker
       tags: [docker]
+  tags: [bootstrap]
 
 # Since this is a distributed stack deployment, only deploy on a manager host
 - hosts: "{{ swarm_manager }}"
   become: yes
   roles:
-    - role: komodo-periphery
-      tags: [komodo-periphery]
+    - role: swarm-komodo-periphery
+      tags: [swarm, komodo-periphery]
+    - role: swarm-dozzle
+      tags: [swarm, dozzle]
+    - role: swarm-traefik-ingress
+      tags: [swarm, traefik-ingress]
   vars:
     swarm_manager: >-
       {{
@@ -56,3 +67,4 @@
         | map(attribute='inventory_hostname')
         | first
       }}
+  tags: [deployments]

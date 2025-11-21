@@ -1,0 +1,8 @@
+---
+
+dozzle_stack_dir: "/opt/dozzle"
+dozzle_data_dir: "/dozzle"
+
+dozzle_version: latest
+dozzle_state: present
+dozzle_env: {}

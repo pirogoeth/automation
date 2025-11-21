@@ -18,11 +18,19 @@ entryPoints:
   web-secure:
     address: ":443"
     http:
-      tls: {}
+      tls:
+        certResolver: "letsencrypt"
   traefik-api:
     address: ":8889"
   traefik-metrics:
     address: ":8891"
+  cftunnel-secure:
+    address: ":1443"
+    http:
+      middlewares:
+        - "cloudflare@file"
+      tls:
+        certResolver: "letsencrypt_prod"
 
 certificatesResolvers:
   letsencrypt:
@@ -66,3 +74,9 @@ providers:
   file:
     directory: "/config/conf.d"
     watch: true
+
+experimental:
+  plugins:
+    cloudflare:
+      moduleName: "github.com/agence-gaya/traefik-plugin-cloudflare"
+      version: "v1.0.0"

@@ -110,10 +110,10 @@ job "n8n" {
 
           "traefik.enable=true",
           "traefik.http.routers.n8n.rule=Host(`n8n.${var.domain}`) && !(Path(`/healthz`) || Path(`/metrics`))",
-          "traefik.http.routers.n8n.entrypoints=web,web-secure",
+          "traefik.http.routers.n8n.entrypoints=web-plain,web-secure",
           "traefik.http.routers.n8n.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
-          # "traefik.http.routers.n8n.tls.certresolver=letsencrypt",
+          # "traefik.http.routers.n8n.tls.certresolver=default-le",
           "traefik.http.routers.n8n.middlewares=n8n-headers,n8n-https-redirect",
           "traefik.http.routers.n8n.service=n8n",
 
@@ -125,9 +125,8 @@ job "n8n" {
           # "traefik.http.middlewares.n8n-internal-headers.headers.Host=webhooks.${var.domain}",
 
           "traefik.http.routers.n8n-webhooks.rule=Host(`webhooks.${var.domain}`)",
-          "traefik.http.routers.n8n-webhooks.entrypoints=web-secure",
+          "traefik.http.routers.n8n-webhooks.entrypoints=web-secure,cftunnel-secure",
           "traefik.http.routers.n8n-webhooks.tls=true",
-          "traefik.http.routers.n8n-webhooks.middlewares=cloudflare-tunnelled@file",
           "traefik.http.routers.n8n-webhooks.service=n8n",
 
           "traefik.http.services.n8n.loadbalancer.passhostheader=true",

@@ -75,9 +75,9 @@ job "windmill" {
       driver = "docker"
 
       config {
-        image      = "ghcr.io/windmill-labs/windmill:main"
+        image              = "ghcr.io/windmill-labs/windmill:main"
         image_pull_timeout = "15m"
-        force_pull = true
+        force_pull         = true
 
         ports = ["http"]
       }
@@ -112,14 +112,10 @@ EOH
 
           "traefik.enable=true",
           "traefik.http.routers.windmill.rule=Host(`wm.${var.domain}`)",
-          "traefik.http.routers.windmill.entrypoints=web",
-          "traefik.http.routers.windmill.middlewares=wm-https-redirect",
-          "traefik.http.middlewares.wm-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.windmill-secure.rule=Host(`wm.${var.domain}`)",
-          "traefik.http.routers.windmill-secure.entrypoints=web-secure",
-          "traefik.http.routers.windmill-secure.tls=true",
+          "traefik.http.routers.windmill.entrypoints=web-secure",
+          "traefik.http.routers.windmill.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
-          # "traefik.http.routers.windmill-secure.tls.certresolver=letsencrypt",
+          # "traefik.http.routers.windmill.tls.certresolver=letsencrypt",
         ]
       }
     }
@@ -132,9 +128,9 @@ EOH
       driver = "docker"
 
       config {
-        image      = "ghcr.io/windmill-labs/windmill:main"
+        image              = "ghcr.io/windmill-labs/windmill:main"
         image_pull_timeout = "15m"
-        force_pull = true
+        force_pull         = true
 
         volumes = [
           "/var/run/docker.sock:/var/run/docker.sock",
@@ -173,9 +169,9 @@ EOH
       driver = "docker"
 
       config {
-        image      = "ghcr.io/windmill-labs/windmill:main"
+        image              = "ghcr.io/windmill-labs/windmill:main"
         image_pull_timeout = "15m"
-        force_pull = true
+        force_pull         = true
       }
 
       env {
@@ -209,9 +205,9 @@ EOH
       driver = "docker"
 
       config {
-        image      = "ghcr.io/windmill-labs/windmill:main"
+        image              = "ghcr.io/windmill-labs/windmill:main"
         image_pull_timeout = "15m"
-        force_pull = true
+        force_pull         = true
 
         volumes = [
           "/data/windmill-worker-cache:/tmp/windmill/cache",
@@ -257,9 +253,9 @@ EOH
       driver = "docker"
 
       config {
-        image      = "ghcr.io/windmill-labs/windmill-lsp:main"
+        image              = "ghcr.io/windmill-labs/windmill-lsp:main"
         image_pull_timeout = "15m"
-        force_pull = true
+        force_pull         = true
 
         ports = ["http"]
 
@@ -282,12 +278,8 @@ EOH
 
           "traefik.enable=true",
           "traefik.http.routers.windmill-lsp.rule=Host(`wm.${var.domain}`) && PathPrefix(`/ws/`)",
-          "traefik.http.routers.windmill-lsp.entrypoints=web",
-          "traefik.http.routers.windmill-lsp.middlewares=wm-https-redirect",
-          "traefik.http.middlewares.wm-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.windmill-lsp-secure.rule=Host(`wm.${var.domain}`) && PathPrefix(`/ws/`)",
-          "traefik.http.routers.windmill-lsp-secure.entrypoints=web-secure",
-          "traefik.http.routers.windmill-lsp-secure.tls=true",
+          "traefik.http.routers.windmill-lsp.entrypoints=web-secure",
+          "traefik.http.routers.windmill-lsp.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
           # "traefik.http.routers.windmill-lsp-secure.tls.certresolver=letsencrypt",
         ]

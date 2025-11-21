@@ -75,7 +75,6 @@ job "phoenix" {
           "traefik.http.routers.phoenix.rule=Host(`phoenix.${var.domain}`)",
           "traefik.http.routers.phoenix.entrypoints=web-secure",
           "traefik.http.routers.phoenix.tls=true",
-          "traefik.http.routers.phoenix.tls.certresolver=letsencrypt-prod",
           "traefik.http.services.phoenix.loadbalancer.passhostheader=true",
         ]
 

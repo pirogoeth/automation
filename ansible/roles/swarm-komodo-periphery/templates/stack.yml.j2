@@ -1,9 +1,5 @@
-####################################
-# 🦎 KOMODO COMPOSE - PERIPHERY 🦎 #
-####################################
-
-## This compose file will deploy:
-##   1. Komodo Periphery
+# vim: set ft=yaml:
+---
 
 x-deploy: &deploy
   mode: global
@@ -20,6 +16,9 @@ x-deploy: &deploy
     failure_action: rollback
     monitor: 15s
     order: stop-first
+    
+volumes:
+  vector-data:
 
 services:
   periphery:
@@ -64,9 +63,18 @@ services:
         protocol: tcp
         mode: host
     volumes:
-      - "${STACK_DIR}/vector:/config"
-      - "${STACK_DIR}/vector/data:/data"
+      - "vector-data:/data"
       - "/:/host:ro"
       - "/var/run/docker.sock:/var/run/docker.sock"
+    configs:
+      - source: "vector_config"
+        target: "/config/vector.toml"
     deploy:
       <<: *deploy
+
+configs:
+{% for config in configs.results %}
+  "{{ config.item.alias }}":
+    external: true
+    name: "{{ config.config_name }}"
+{% endfor %}

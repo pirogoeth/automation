@@ -1,0 +1,8 @@
+---
+
+minio_stack_dir: "/opt/stacks/minio"
+minio_disks_dir: "/disks"
+minio_base_domain: "example.org"
+minio_browser_redirect_url: "https://console.s3.example.org"
+minio_prometheus_url: "https://prometheus.example.org"
+minio_cloudflare_trusted_cidrs: []

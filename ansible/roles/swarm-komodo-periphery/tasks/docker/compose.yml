@@ -1,0 +1,29 @@
+---
+
+- name: Sync stack to remote
+  ansible.posix.synchronize:
+    src: "compose/"
+    dest: "{{ periphery_stack_dir }}"
+    mode: "push"
+    recursive: yes
+    owner: false
+    group: false
+  register: stack_sync
+
+- name: Template env file
+  ansible.builtin.template:
+    src: "templates/env.j2"
+    dest: "{{ periphery_stack_dir }}/.env"
+    owner: "root"
+    group: "root"
+    mode: "0640"
+  register: env_file
+
+- name: Compose deployment
+  community.docker.docker_compose_v2:
+    project_src: "{{ periphery_stack_dir }}"
+    pull: always
+    state: "{{ periphery_state }}"
+  when:
+    - periphery_docker_mode == "compose"
+    - stack_sync is changed or env_file is changed

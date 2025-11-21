@@ -1,0 +1,49 @@
+---
+# Swarm Traefik Ingress stack configuration
+swarm_traefik_ingress_stack_name: "traefik-ingress"
+swarm_traefik_ingress_stack_dir: "/opt/{{ swarm_traefik_ingress_stack_name }}"
+
+# Versions
+traefik_version: "v3.5"
+traefik_kop_version: "0.18.1"
+redis_version: "7-alpine"
+
+# Domain configuration
+traefik_domain: "{{ ansible_domain | default('example.com') }}"
+traefik_acme_email: "admin@{{ traefik_domain }}"
+
+# Cloudflare configuration (for DNS challenge and middleware)
+traefik_acme_cloudflare_email: ""
+traefik_acme_cloudflare_apikey: ""
+# Cloudflare trusted CIDRs - will be fetched dynamically from Cloudflare API
+cloudflare_trusted_cidrs: []
+
+__traefik_default_plugins:
+  fail2ban:
+    moduleName: "github.com/tomMoulard/fail2ban"
+    version: "v0.8.3"
+  cloudflare:
+    moduleName: "github.com/agence-gaya/traefik-plugin-cloudflare"
+    version: "v1.2.0"
+
+# Middleware configuration
+traefik_enable_fail2ban_middleware: true
+traefik_enable_cloudflare_middleware: true
+
+# Redis configuration
+redis_max_memory: "256mb"
+
+# Traefik-kop configuration
+traefik_kop_redis_address: "tailscale"
+traefik_kop_poll_interval: 30
+traefik_kop_log_level: "debug"
+traefik_kop_namespace: "" # Optional namespace filtering
+traefik_kop_options: {}
+
+# Resource limits
+redis_memory_limit: "512M"
+redis_memory_reservation: "256M"
+traefik_memory_limit: "512M"
+traefik_memory_reservation: "256M"
+traefik_kop_memory_limit: "128M"
+traefik_kop_memory_reservation: "64M"

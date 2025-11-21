@@ -13,6 +13,7 @@
     state: present
   vars:
     packages:
+      - haveged
       - golang-go
       - python3-venv
 

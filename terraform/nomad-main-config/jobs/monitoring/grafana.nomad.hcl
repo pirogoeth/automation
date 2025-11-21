@@ -62,14 +62,10 @@ job "grafana" {
           "prometheus.io/path=/metrics",
           "traefik.enable=true",
           "traefik.http.routers.grafana.rule=Host(`grafana.${var.domain}`) && !Path(`/metrics`)",
-          "traefik.http.routers.grafana.entrypoints=web",
-          "traefik.http.routers.grafana.middlewares=grafana-https-redirect",
-          "traefik.http.middlewares.grafana-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.grafana-secure.rule=Host(`grafana.${var.domain}`) && !Path(`/metrics`)",
-          "traefik.http.routers.grafana-secure.entrypoints=web-secure",
-          "traefik.http.routers.grafana-secure.tls=true",
+          "traefik.http.routers.grafana.entrypoints=web-secure,cftunnel-secure",
+          "traefik.http.routers.grafana.tls=true",
           # Temporarily(?) using the defaultGeneratedCert
-          # "traefik.http.routers.grafana-secure.tls.certresolver=letsencrypt",
+          # "traefik.http.routers.grafana-secure.tls.certresolver=default-le",
         ]
 
         check {

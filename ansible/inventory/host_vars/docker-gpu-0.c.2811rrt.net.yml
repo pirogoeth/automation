@@ -1,5 +1,4 @@
 ---
-
 system_disk_mounts:
   - src: 10.100.0.6:/volume1/downloads
     dest: /mnt/downloads
@@ -11,3 +10,7 @@ system_disk_mounts:
     fstype: nfs
     options: defaults,noatime
     state: mounted
+
+swarm_enabled: true
+swarm_role: member
+swarm_group: default

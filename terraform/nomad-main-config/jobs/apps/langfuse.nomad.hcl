@@ -80,7 +80,6 @@ job "langfuse" {
           "traefik.http.routers.langfuse.rule=Host(`langfuse.${var.domain}`)",
           "traefik.http.routers.langfuse.entrypoints=web-secure",
           "traefik.http.routers.langfuse.tls=true",
-          "traefik.http.routers.langfuse.tls.certresolver=letsencrypt-prod",
           "traefik.http.services.langfuse.loadbalancer.passhostheader=true",
         ]
 

@@ -64,7 +64,6 @@ job "localai" {
           "traefik.http.routers.localai.rule=Host(`ai.${var.domain}`)",
           "traefik.http.routers.localai.entrypoints=web-secure",
           "traefik.http.routers.localai.tls=true",
-          "traefik.http.routers.localai.tls.certresolver=letsencrypt-prod",
           "traefik.http.services.localai.loadbalancer.passhostheader=true",
         ]
       }

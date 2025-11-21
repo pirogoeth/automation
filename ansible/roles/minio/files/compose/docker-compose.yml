@@ -2,20 +2,18 @@
 
 networks:
   backend: {}
+  
+x-service-common: &service-common
+  pull_policy: "always"
+  restart: "unless-stopped"
+  env_file: "{{ minio_stack_dir }}/env"
+  networks:
+  - "backend"
 
 services:
   minio:
+    <<: *service-common
     image: "docker.io/minio/minio:latest"
-    pull_policy: "always"
-    restart: "unless-stopped"
-    env_file: /opt/stacks/minio/env
-    networks:
-    - "backend"
-    environment:
-    - "MINIO_ADDRESS=:9000"
-    - "MINIO_CONSOLE_ADDRESS=:9001"
-    - "MINIO_PROMETHEUS_URL=https://prometheus.2811rrt.net"
-    - "MINIO_BROWSER_REDIRECT_URL=https://console.s3.2811rrt.net"
     command:
     - "server"
     - "--json"
@@ -23,19 +21,15 @@ services:
     - "/disks/disk2"
     - "/disks/disk3"
     volumes:
-    - "/disks:/disks"
+    - "{{ minio_disks_dir }}:/disks"
 
   traefik:
-    image: "docker.io/library/traefik:2.11"
-    pull_policy: "always"
-    restart: "unless-stopped"
-    env_file: /opt/stacks/minio/env
-    networks:
-    - "backend"
+    <<: *service-common
+    image: "docker.io/library/traefik:3"
     volumes:
-    - "/opt/stacks/minio/traefik/traefik.yml:/config/traefik.yml:ro"
-    - "/opt/stacks/minio/traefik/conf.d:/config/conf.d:ro"
-    - "/opt/stacks/minio/traefik/data/acme:/acme"
+    - "{{ minio_stack_dir }}/traefik/traefik.yml:/config/traefik.yml:ro"
+    - "{{ minio_stack_dir }}/traefik/conf.d:/config/conf.d:ro"
+    - "{{ minio_stack_dir }}/traefik/data/acme:/acme"
     ports:
     - "80:80"
     - "443:443"
@@ -45,9 +39,8 @@ services:
     - "--configfile=/config/traefik.yml"
 
   vector:
+    <<: *service-common
     image: docker.io/timberio/vector:nightly-distroless-static
-    pull_policy: always
-    restart: unless-stopped
     command:
       - -c
       - /config/vector.toml
@@ -55,7 +48,7 @@ services:
       - 6000:6000 # source: vector-receiver
       - 8686:8686 # api
     volumes:
-      - /opt/stacks/minio/vector/conf:/config
-      - /opt/stacks/minio/vector/data:/data
-      - /:/host:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "{{ minio_stack_dir }}/vector/conf:/config"
+      - "{{ minio_stack_dir }}/vector/data:/data"
+      - "/:/host:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock"

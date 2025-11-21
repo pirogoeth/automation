@@ -92,7 +92,6 @@ job "handbrake" {
           "traefik.http.routers.handbrake.rule=Host(`handbrake.${var.domain}`)",
           "traefik.http.routers.handbrake.entrypoints=web-secure",
           "traefik.http.routers.handbrake.tls=true",
-          "traefik.http.routers.handbrake.tls.certresolver=letsencrypt-prod",
         ]
       }
 

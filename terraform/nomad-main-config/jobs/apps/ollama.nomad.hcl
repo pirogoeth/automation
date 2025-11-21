@@ -70,7 +70,6 @@ job "ollama" {
           "traefik.http.routers.ollama.rule=Host(`ollama.${var.domain}`)",
           "traefik.http.routers.ollama.entrypoints=web-secure",
           "traefik.http.routers.ollama.tls=true",
-          "traefik.http.routers.ollama.tls.certresolver=letsencrypt-prod",
         ]
 
         check {

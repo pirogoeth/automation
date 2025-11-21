@@ -123,12 +123,8 @@ S3_INSECURE=${var.s3_insecure}
 
           "traefik.enable=true",
           "traefik.http.routers.loki.rule=Host(`loki.${var.domain}`)",
-          "traefik.http.routers.loki.entrypoints=web",
-          "traefik.http.routers.loki.middlewares=loki-https-redirect",
-          "traefik.http.middlewares.loki-https-redirect.redirectscheme.scheme=https",
-          "traefik.http.routers.loki-secure.rule=Host(`loki.${var.domain}`)",
-          "traefik.http.routers.loki-secure.entrypoints=web-secure",
-          "traefik.http.routers.loki-secure.tls=true",
+          "traefik.http.routers.loki.entrypoints=web-secure",
+          "traefik.http.routers.loki.tls=true",
         ]
 
         check {

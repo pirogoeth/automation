@@ -1,5 +1,4 @@
 ---
-
 - name: Format disks
   community.general.filesystem:
     dev: "{{ item }}"
@@ -7,9 +6,9 @@
     resizefs: yes
     state: "present"
   loop:
-  - /dev/vdb
-  - /dev/vdc
-  - /dev/vdd
+    - /dev/vdb
+    - /dev/vdc
+    - /dev/vdd
 
 - name: Make mountpoint
   ansible.builtin.file:
@@ -26,13 +25,13 @@
     boot: yes
     state: "mounted"
   loop:
-  - {src: /dev/vdb, dest: /disks/disk1}
-  - {src: /dev/vdc, dest: /disks/disk2}
-  - {src: /dev/vdd, dest: /disks/disk3}
+    - { src: /dev/vdb, dest: /disks/disk1 }
+    - { src: /dev/vdc, dest: /disks/disk2 }
+    - { src: /dev/vdd, dest: /disks/disk3 }
 
 - name: Make stack directory
   ansible.builtin.file:
-    path: "/opt/stacks/minio"
+    path: "{{ minio_stack_dir }}"
     state: "directory"
     owner: "root"
     group: "root"
@@ -41,19 +40,29 @@
 - name: Sync stack to remote
   ansible.posix.synchronize:
     src: "compose/"
-    dest: "/opt/stacks/minio/"
+    dest: "{{ minio_stack_dir }}/"
     mode: "push"
     recursive: yes
 
-- name: Template env file
+- name: Template files
   ansible.builtin.template:
-    src: "files/env.j2"
-    dest: "/opt/stacks/minio/env"
+    src: "{{ item.src }}"
+    dest: "{{ minio_stack_dir }}/{{ item.dest }}"
     owner: "root"
     group: "root"
     mode: "0640"
+  loop:
+    - src: "files/env.j2"
+      dest: "env"
+    - src: "files/compose/docker-compose.yml"
+      dest: "docker-compose.yml"
+    - src: "files/compose/traefik/conf.d/middlewares.yml"
+      dest: "traefik/conf.d/middlewares.yml"
+    - src: "files/compose/traefik/conf.d/minio.yml"
+      dest: "traefik/conf.d/minio.yml"
 
 - name: Deployment
   community.docker.docker_compose_v2:
-    project_src: "/opt/stacks/minio"
+    project_src: "{{ minio_stack_dir }}"
     state: "present"
+
